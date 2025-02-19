@@ -85,6 +85,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
           setLoggedIn(true);
           const user = await web3auth.getUserInfo();
           setUserInfo(user);
+
           if (user.email) {
             localStorage.setItem("userEmail", user.email);
             try {
@@ -96,6 +97,12 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
           }
         }
       } catch (error) {
+        if (error?.message?.includes("User closed the modal")) {
+          console.log("User canceled the Web3Auth modal.");
+          // Handle it as you see fit — you could show a toast, do nothing, etc.
+          return;
+        }
+
         console.error("Error initializing Web3Auth:", error);
       } finally {
         setLoading(false);
@@ -325,10 +332,10 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
                 <DropdownMenuItem onClick={getUserInfo}>
                   {userInfo ? userInfo.name : "Fetch User Info"}
                 </DropdownMenuItem>
+                <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/settings">Profile</Link>
+                  <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
