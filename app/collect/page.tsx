@@ -153,7 +153,7 @@ export default function CollectPage() {
       const genAI = new GoogleGenerativeAI(
         "AIzaSyDcEi9na9Ke9GQveUl3-_AP3fF6siK3XrQ"
       );
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
       const base64Data = readFileAsBase64(verificationImage);
 

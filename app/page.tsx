@@ -1,5 +1,5 @@
-"use client";
 // @ts-nocheck
+"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -13,16 +13,43 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Poppins } from "next/font/google";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   getRecentReports,
   getAllRewards,
   getWasteCollectionTasks,
 } from "@/utils/db/actions";
+import { Web3Auth } from "@web3auth/modal";
+import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+
 const poppins = Poppins({
   weight: ["300", "400", "600"],
   subsets: ["latin"],
   display: "swap",
+});
+
+const clientId = process.env.WEB3_AUTH_CLIENT_ID;
+
+const chainConfig = {
+  chainNamespace: CHAIN_NAMESPACES.EIP155,
+  chainId: "0xaa36a7",
+  rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+  displayName: "Ethereum Sepolia Testnet",
+  blockExplorerUrl: "https://sepolia.etherscan.io",
+  ticker: "ETH",
+  tickerName: "Ethereum",
+  logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+};
+
+const privateKeyProvider = new EthereumPrivateKeyProvider({
+  config: { chainConfig },
+});
+
+const web3auth = new Web3Auth({
+  clientId,
+  web3AuthNetwork: WEB3AUTH_NETWORK.TESTNET, // Changed from SAPPHIRE_MAINNET to TESTNET
+  privateKeyProvider,
 });
 
 function AnimatedGlobe() {
@@ -39,12 +66,34 @@ function AnimatedGlobe() {
 
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const router = useRouter();
   const [impactData, setImpactData] = useState({
     wasteCollected: 0,
     reportsSubmitted: 0,
     tokensEarned: 0,
     co2Offset: 0,
   });
+
+  useEffect(() => {
+    async function initWeb3Auth() {
+      await web3auth.initModal();
+      if (web3auth.connected) {
+        setLoggedIn(true);
+      }
+    }
+    initWeb3Auth();
+  }, []);
+
+  // ✅ Function to log in using Web3Auth
+  const login = async () => {
+    try {
+      await web3auth.connect();
+      setLoggedIn(true);
+      router.push("/report"); // Redirect after login
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
 
   useEffect(() => {
     async function fetchImpactData() {
@@ -87,16 +136,12 @@ export default function Home() {
     fetchImpactData();
   }, []);
 
-  const login = () => {
-    setLoggedIn(true);
-  };
-
   return (
     <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
       <section className="text-center mb-20">
         <AnimatedGlobe />
         <h1 className="text-6xl font-bold mb-6 text-gray-800 tracking-tight">
-          Zero-to-Hero <span className="text-green-600">Waste Management</span>
+          Green-Quest <span className="text-green-600">Waste Management</span>
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
           Join our community in making waste management more efficient and
@@ -111,12 +156,13 @@ export default function Home() {
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         ) : (
-          <Link href="/report">
-            <Button className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105">
-              Report Waste
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <Button
+            onClick={() => router.push("/report")}
+            className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105"
+          >
+            Report Waste
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
         )}
       </section>
 

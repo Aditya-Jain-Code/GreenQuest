@@ -18,9 +18,6 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
-const geminiApiKey = process.env.GEMINI_API_KEY;
-const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-
 const libraries: Libraries = ["places"];
 
 export default function ReportPage() {
