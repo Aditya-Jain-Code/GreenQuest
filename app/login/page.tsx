@@ -16,7 +16,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const clientId = process.env.WEB3_AUTH_CLIENT_ID;
+const clientId = process.env.WEB3AUTH_CLIENT_ID; // Ensure it's set in .env.local
 
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -36,6 +36,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     const initWeb3Auth = async () => {
+      if (!clientId) {
+        console.error("Web3Auth clientId is missing. Set it in .env.local");
+        return;
+      }
+
       try {
         const privateKeyProvider = new EthereumPrivateKeyProvider({
           config: { chainConfig },
@@ -43,11 +48,14 @@ export default function LoginPage() {
 
         const web3authInstance = new Web3Auth({
           clientId,
-          web3AuthNetwork: WEB3AUTH_NETWORK.TESTNET,
+          web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
           privateKeyProvider,
         });
 
+        console.log("Initializing Web3Auth...");
         await web3authInstance.initModal();
+        console.log("Web3Auth initialized successfully");
+
         setWeb3Auth(web3authInstance);
 
         if (web3authInstance.connected) {
@@ -55,16 +63,28 @@ export default function LoginPage() {
         }
       } catch (error) {
         console.error("Web3Auth initialization error:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+
     initWeb3Auth();
   }, [router]);
 
   const login = async () => {
-    if (!web3auth) return;
-    await web3auth.connect();
-    router.push("/"); // Redirect to home after login
+    if (!web3auth) {
+      console.log("Web3Auth is not ready yet.");
+      return;
+    }
+
+    try {
+      console.log("Logging in...");
+      await web3auth.connect();
+      console.log("User logged in successfully");
+      router.push("/"); // Redirect to home after login
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
   return (

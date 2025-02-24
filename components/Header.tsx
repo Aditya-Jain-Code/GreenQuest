@@ -35,7 +35,7 @@ import {
   getUserBalance,
 } from "@/utils/db/actions";
 
-const clientId = process.env.WEB3_AUTH_CLIENT_ID;
+const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -52,18 +52,13 @@ const privateKeyProvider = new EthereumPrivateKeyProvider({
   config: { chainConfig },
 });
 
-const web3auth = new Web3Auth({
-  clientId,
-  web3AuthNetwork: WEB3AUTH_NETWORK.TESTNET, // Changed from SAPPHIRE_MAINNET to TESTNET
-  privateKeyProvider,
-});
-
 interface HeaderProps {
   onMenuClick: () => void;
   totalEarnings: number;
 }
 
 export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
+  const [web3auth, setWeb3Auth] = useState<Web3Auth | null>(null);
   const [provider, setProvider] = useState<IProvider | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,41 +71,48 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
   console.log("user info", userInfo);
 
   useEffect(() => {
-    const init = async () => {
+    const initializeWeb3Auth = async () => {
+      if (web3auth) return; // Prevent multiple initializations
+
       try {
-        await web3auth.initModal();
-        setProvider(web3auth.provider);
+        console.log("🟢 Initializing Web3Auth...");
+        const web3authInstance = new Web3Auth({
+          clientId: clientId!,
+          web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
+          privateKeyProvider,
+        });
 
-        if (web3auth.connected) {
-          setLoggedIn(true);
-          const user = await web3auth.getUserInfo();
-          setUserInfo(user);
-
-          if (user.email) {
-            localStorage.setItem("userEmail", user.email);
-            try {
-              await createUser(user.email, user.name || "Anonymous User");
-            } catch (error) {
-              console.error("Error creating user:", error);
-              // Handle the error appropriately, maybe show a message to the user
-            }
-          }
-        }
+        setWeb3Auth(web3authInstance);
+        await web3authInstance.initModal(); // Initialize Web3Auth modal
+        setProvider(web3authInstance.provider);
+        setLoading(false); // ✅ Update loading state
+        console.log("✅ Web3Auth Ready!");
       } catch (error) {
-        if (error?.message?.includes("User closed the modal")) {
-          console.log("User canceled the Web3Auth modal.");
-          // Handle it as you see fit — you could show a toast, do nothing, etc.
-          return;
-        }
-
-        console.error("Error initializing Web3Auth:", error);
-      } finally {
-        setLoading(false);
+        console.error("❌ Web3Auth initialization failed:", error);
+        setLoading(false); // ✅ Ensure UI doesn't get stuck
       }
     };
 
-    init();
-  }, []);
+    initializeWeb3Auth();
+  }, []); // Only runs once when the component mounts
+
+  useEffect(() => {
+    const initWeb3Auth = async () => {
+      try {
+        if (!web3auth) return; // Ensure web3auth is set before proceeding
+
+        console.log("🟢 Attempting to initialize Web3Auth...");
+        await web3auth.initModal();
+        console.log("✅ Web3Auth Ready!");
+
+        setProvider(web3auth.provider);
+      } catch (error) {
+        console.error("❌ Web3Auth initialization failed:", error);
+      }
+    };
+
+    initWeb3Auth();
+  }, [web3auth]); // Depend on `web3auth`
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -164,26 +166,21 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
   const login = async () => {
     if (!web3auth) {
-      console.log("web3auth not initialized yet");
+      console.error("🚨 Web3Auth is not initialized.");
       return;
     }
+
     try {
+      console.log("🔄 Attempting login...");
       const web3authProvider = await web3auth.connect();
       setProvider(web3authProvider);
       setLoggedIn(true);
+
       const user = await web3auth.getUserInfo();
+      console.log("👤 User Info:", user);
       setUserInfo(user);
-      if (user.email) {
-        localStorage.setItem("userEmail", user.email);
-        try {
-          await createUser(user.email, user.name || "Anonymous User");
-        } catch (error) {
-          console.error("Error creating user:", error);
-          // Handle the error appropriately, maybe show a message to the user
-        }
-      }
     } catch (error) {
-      console.error("Error during login:", error);
+      console.error("❌ Login Error:", error);
     }
   };
 
@@ -248,7 +245,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
             <Leaf className="h-6 w-6 md:h-8 md:w-8 text-green-500 mr-1 md:mr-2" />
             <div className="flex flex-col">
               <span className="font-bold text-base md:text-lg text-gray-800">
-                GreenQuest
+                Zero2Hero
               </span>
             </div>
           </Link>
@@ -332,10 +329,10 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
                 <DropdownMenuItem onClick={getUserInfo}>
                   {userInfo ? userInfo.name : "Fetch User Info"}
                 </DropdownMenuItem>
-                <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/settings">Settings</Link>
+                  <Link href="/settings">Profile</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

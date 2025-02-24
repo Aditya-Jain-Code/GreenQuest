@@ -1,18 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  ArrowRight,
-  Leaf,
-  Recycle,
-  Users,
-  Coins,
-  MapPin,
-  ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Poppins } from "next/font/google";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Leaf, Recycle, Users, Coins, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   getRecentReports,
@@ -22,6 +12,10 @@ import {
 import { Web3Auth } from "@web3auth/modal";
 import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import ImpactCard from "@/components/ImpactCard";
+import FeatureCard from "@/components/FeatureCard";
+import ActionButton from "@/components/ActionButton";
+import { Poppins } from "next/font/google";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],
@@ -29,7 +23,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const clientId = process.env.WEB3_AUTH_CLIENT_ID;
+const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -42,104 +36,92 @@ const chainConfig = {
   logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
 };
 
-const privateKeyProvider = new EthereumPrivateKeyProvider({
-  config: { chainConfig },
-});
-
-const web3auth = new Web3Auth({
-  clientId,
-  web3AuthNetwork: WEB3AUTH_NETWORK.TESTNET, // Changed from SAPPHIRE_MAINNET to TESTNET
-  privateKeyProvider,
-});
-
-function AnimatedGlobe() {
-  return (
-    <div className="relative w-32 h-32 mx-auto mb-8">
-      <div className="absolute inset-0 rounded-full bg-green-500 opacity-20 animate-pulse"></div>
-      <div className="absolute inset-2 rounded-full bg-green-400 opacity-40 animate-ping"></div>
-      <div className="absolute inset-4 rounded-full bg-green-300 opacity-60 animate-spin"></div>
-      <div className="absolute inset-6 rounded-full bg-green-200 opacity-80 animate-bounce"></div>
-      <Leaf className="absolute inset-0 m-auto h-16 w-16 text-green-600 animate-pulse" />
-    </div>
-  );
-}
-
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
   const router = useRouter();
+  const web3authRef = useRef<Web3Auth | null>(null);
   const [impactData, setImpactData] = useState({
     wasteCollected: 0,
     reportsSubmitted: 0,
     tokensEarned: 0,
     co2Offset: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function initWeb3Auth() {
-      await web3auth.initModal();
-      if (web3auth.connected) {
-        setLoggedIn(true);
+      if (!web3authRef.current) {
+        web3authRef.current = new Web3Auth({
+          clientId,
+          web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
+          privateKeyProvider: new EthereumPrivateKeyProvider({
+            config: { chainConfig },
+          }),
+        });
+        await web3authRef.current.initModal();
+        if (web3authRef.current.connected) {
+          setLoggedIn(true);
+        }
       }
     }
     initWeb3Auth();
   }, []);
 
-  // ✅ Function to log in using Web3Auth
-  const login = async () => {
+  const login = useCallback(async () => {
     try {
-      await web3auth.connect();
+      await web3authRef.current?.connect();
       setLoggedIn(true);
-      router.push("/report"); // Redirect after login
+      router.push("/report");
     } catch (error) {
       console.error("Login failed:", error);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     async function fetchImpactData() {
+      setLoading(true);
       try {
-        const reports = await getRecentReports(100); // Fetch last 100 reports
-        const rewards = await getAllRewards();
-        const tasks = await getWasteCollectionTasks(100); // Fetch last 100 tasks
+        const [reports, rewards, tasks] = await Promise.allSettled([
+          getRecentReports(100),
+          getAllRewards(),
+          getWasteCollectionTasks(100),
+        ]);
 
-        const wasteCollected = tasks.reduce((total, task) => {
-          const match = task.amount.match(/(\d+(\.\d+)?)/);
-          const amount = match ? parseFloat(match[0]) : 0;
-          return total + amount;
-        }, 0);
-
-        const reportsSubmitted = reports.length;
-        const tokensEarned = rewards.reduce(
-          (total, reward) => total + (reward.points || 0),
-          0
-        );
-        const co2Offset = wasteCollected * 0.5; // Assuming 0.5 kg CO2 offset per kg of waste
+        const wasteCollected =
+          tasks.status === "fulfilled"
+            ? tasks.value.reduce(
+                (total, task) =>
+                  total +
+                  parseFloat(task.amount.match(/(\d+(\.\d+)?)/)?.[0] || "0"),
+                0
+              )
+            : 0;
 
         setImpactData({
-          wasteCollected: Math.round(wasteCollected * 10) / 10, // Round to 1 decimal place
-          reportsSubmitted,
-          tokensEarned,
-          co2Offset: Math.round(co2Offset * 10) / 10, // Round to 1 decimal place
+          wasteCollected: Math.round(wasteCollected * 10) / 10,
+          reportsSubmitted:
+            reports.status === "fulfilled" ? reports.value.length : 0,
+          tokensEarned:
+            rewards.status === "fulfilled"
+              ? rewards.value.reduce(
+                  (total, reward) => total + (reward.points || 0),
+                  0
+                )
+              : 0,
+          co2Offset: Math.round(wasteCollected * 0.5 * 10) / 10, // 1kg waste = 0.5kg CO2 offset
         });
       } catch (error) {
-        console.error("Error fetching impact data:", error);
-        // Set default values in case of error
-        setImpactData({
-          wasteCollected: 0,
-          reportsSubmitted: 0,
-          tokensEarned: 0,
-          co2Offset: 0,
-        });
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
     }
-
     fetchImpactData();
   }, []);
 
   return (
     <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
       <section className="text-center mb-20">
-        <AnimatedGlobe />
         <h1 className="text-6xl font-bold mb-6 text-gray-800 tracking-tight">
           Green-Quest <span className="text-green-600">Waste Management</span>
         </h1>
@@ -147,40 +129,27 @@ export default function Home() {
           Join our community in making waste management more efficient and
           rewarding!
         </p>
-        {!loggedIn ? (
-          <Button
-            onClick={login}
-            className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105"
-          >
-            Get Started
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        ) : (
-          <Button
-            onClick={() => router.push("/report")}
-            className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105"
-          >
-            Report Waste
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        )}
+        <ActionButton
+          onClick={loggedIn ? () => router.push("/report") : login}
+          label={loggedIn ? "Report Waste" : "Get Started"}
+        />
       </section>
 
-      <section className="grid md:grid-cols-3 gap-10 mb-20">
+      <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-10 mb-20">
         <FeatureCard
           icon={Leaf}
           title="Eco-Friendly"
-          description="Contribute to a cleaner environment by reporting and collecting waste."
+          description="Contribute to a cleaner environment."
         />
         <FeatureCard
           icon={Coins}
           title="Earn Rewards"
-          description="Get tokens for your contributions to waste management efforts."
+          description="Get tokens for your contributions."
         />
         <FeatureCard
           icon={Users}
           title="Community-Driven"
-          description="Be part of a growing community committed to sustainable practices."
+          description="Be part of a growing community."
         />
       </section>
 
@@ -190,69 +159,31 @@ export default function Home() {
         </h2>
         <div className="grid md:grid-cols-4 gap-6">
           <ImpactCard
-            title="Waste Collected"
-            value={`${impactData.wasteCollected} kg`}
+            title="Waste Collected (kg)"
+            value={impactData.wasteCollected}
             icon={Recycle}
+            loading={loading}
           />
           <ImpactCard
             title="Reports Submitted"
-            value={impactData.reportsSubmitted.toString()}
+            value={impactData.reportsSubmitted}
             icon={MapPin}
+            loading={loading}
           />
           <ImpactCard
             title="Tokens Earned"
-            value={impactData.tokensEarned.toString()}
+            value={impactData.tokensEarned}
             icon={Coins}
+            loading={loading}
           />
           <ImpactCard
-            title="CO2 Offset"
-            value={`${impactData.co2Offset} kg`}
+            title="CO₂ Offset (kg)"
+            value={impactData.co2Offset}
             icon={Leaf}
+            loading={loading}
           />
         </div>
       </section>
-    </div>
-  );
-}
-
-function ImpactCard({
-  title,
-  value,
-  icon: Icon,
-}: {
-  title: string;
-  value: string | number;
-  icon: React.ElementType;
-}) {
-  const formattedValue =
-    typeof value === "number"
-      ? value.toLocaleString("en-US", { maximumFractionDigits: 1 })
-      : value;
-  return (
-    <div className="p-6 rounded-xl bg-gray-50 border border-gray-100 transition-all duration-300 ease-in-out hover:shadow-md">
-      <Icon className="h-10 w-10 text-green-500 mb-4" />
-      <p className="text-3xl font-bold mb-2 text-gray-800">{formattedValue}</p>
-      <p className="text-sm text-gray-600">{title}</p>
-    </div>
-  );
-}
-
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col items-center text-center">
-      <div className="bg-green-100 p-4 rounded-full mb-6">
-        <Icon className="h-8 w-8 text-green-600" />
-      </div>
-      <h3 className="text-xl font-semibold mb-4 text-gray-800">{title}</h3>
-      <p className="text-gray-600 leading-relaxed">{description}</p>
     </div>
   );
 }
