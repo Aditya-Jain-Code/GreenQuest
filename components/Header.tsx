@@ -173,12 +173,27 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
     try {
       console.log("🔄 Attempting login...");
       const web3authProvider = await web3auth.connect();
+
+      if (!web3authProvider) {
+        console.error("❌ Web3Auth provider not found.");
+        return;
+      }
+
+      console.log("✅ Logged in successfully!");
       setProvider(web3authProvider);
       setLoggedIn(true);
 
       const user = await web3auth.getUserInfo();
-      console.log("👤 User Info:", user);
-      setUserInfo(user);
+
+      if (user && user.email) {
+        console.log("👤 User Info:", user);
+        setUserInfo(user);
+
+        // ✅ Store user email safely after ensuring it's available
+        localStorage.setItem("userEmail", user.email);
+      } else {
+        console.error("❌ User email is missing after login.");
+      }
     } catch (error) {
       console.error("❌ Login Error:", error);
     }
