@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, MapPin, Save } from "lucide-react";
+import { User, Mail, Phone, MapPin, Save, Camera, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 type UserSettings = {
+  profilePic: string;
   name: string;
   email: string;
   phone: string;
@@ -16,6 +18,7 @@ const SETTINGS_KEY = "user-settings"; // Key for localStorage
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>({
+    profilePic: "/default-avatar.png", // Default avatar
     name: "John Doe",
     email: "john.doe@example.com",
     phone: "+1 234 567 8900",
@@ -23,11 +26,15 @@ export default function SettingsPage() {
     notifications: true,
   });
 
+  const [savedSettings, setSavedSettings] = useState<UserSettings | null>(null);
+
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem(SETTINGS_KEY);
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+      const parsedSettings = JSON.parse(saved);
+      setSettings(parsedSettings);
+      setSavedSettings(parsedSettings); // Store a copy for reset functionality
     }
   }, []);
 
@@ -39,34 +46,77 @@ export default function SettingsPage() {
     };
 
     setSettings(updatedSettings);
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updatedSettings)); // Save to localStorage
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updatedSettings));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); // Ensure settings are saved
-    alert("Settings updated successfully!");
+  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imageUrl = event.target?.result as string;
+        setSettings((prev) => ({ ...prev, profilePic: imageUrl }));
+        localStorage.setItem(
+          SETTINGS_KEY,
+          JSON.stringify({ ...settings, profilePic: imageUrl })
+        );
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleUndoChanges = () => {
+    if (savedSettings) {
+      setSettings(savedSettings);
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(savedSettings));
+    }
   };
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-8 max-w-3xl mx-auto bg-white shadow-xl rounded-xl">
       <h1 className="text-3xl font-semibold mb-6 text-gray-800">
         Account Settings
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Name Input */}
-        <div>
+      {/* Profile Picture */}
+      <div className="flex items-center space-x-4 mb-6">
+        <div className="relative">
+          <Image
+            src={settings.profilePic}
+            alt="Profile Picture"
+            width={80}
+            height={80}
+            className="rounded-full border border-gray-300"
+          />
           <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="profilePic"
+            className="absolute bottom-0 right-0 bg-gray-200 p-1 rounded-full cursor-pointer"
           >
+            <Camera size={18} className="text-gray-600" />
+          </label>
+          <input
+            type="file"
+            id="profilePic"
+            className="hidden"
+            accept="image/*"
+            onChange={handleProfilePicChange}
+          />
+        </div>
+        <div>
+          <p className="text-lg font-medium">{settings.name}</p>
+          <p className="text-sm text-gray-500">{settings.email}</p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Full Name
           </label>
           <div className="relative">
             <input
               type="text"
-              id="name"
               name="name"
               value={settings.name}
               onChange={handleInputChange}
@@ -79,18 +129,14 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Email Input */}
+        {/* Email */}
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Email Address
           </label>
           <div className="relative">
             <input
               type="email"
-              id="email"
               name="email"
               value={settings.email}
               onChange={handleInputChange}
@@ -103,18 +149,14 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Phone Input */}
+        {/* Phone */}
         <div>
-          <label
-            htmlFor="phone"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Phone Number
           </label>
           <div className="relative">
             <input
               type="tel"
-              id="phone"
               name="phone"
               value={settings.phone}
               onChange={handleInputChange}
@@ -127,18 +169,14 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Address Input */}
+        {/* Address */}
         <div>
-          <label
-            htmlFor="address"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Address
           </label>
           <div className="relative">
             <input
               type="text"
-              id="address"
               name="address"
               value={settings.address}
               onChange={handleInputChange}
@@ -150,34 +188,22 @@ export default function SettingsPage() {
             />
           </div>
         </div>
+      </form>
 
-        {/* Notifications Toggle */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="notifications"
-            name="notifications"
-            checked={settings.notifications}
-            onChange={handleInputChange}
-            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-          />
-          <label
-            htmlFor="notifications"
-            className="ml-2 block text-sm text-gray-700"
-          >
-            Receive email notifications
-          </label>
-        </div>
-
-        {/* Save Button */}
+      {/* Buttons */}
+      <div className="flex justify-between mt-8">
         <Button
-          type="submit"
-          className="w-full bg-green-500 hover:bg-green-600 text-white"
+          onClick={handleUndoChanges}
+          className="bg-gray-500 hover:bg-gray-600 text-white flex items-center"
         >
+          <Undo2 className="w-4 h-4 mr-2" />
+          Undo Changes
+        </Button>
+        <Button className="bg-green-500 hover:bg-green-600 text-white flex items-center">
           <Save className="w-4 h-4 mr-2" />
           Save Changes
         </Button>
-      </form>
+      </div>
     </div>
   );
 }

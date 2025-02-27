@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Poppins } from "next/font/google";
 import { ArrowRight } from "lucide-react";
+import { createUser } from "@/utils/db/actions";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],
@@ -16,7 +17,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const clientId = process.env.WEB3AUTH_CLIENT_ID; // Ensure it's set in .env.local
+const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -31,13 +32,14 @@ const chainConfig = {
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const [web3auth, setWeb3Auth] = useState(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const initWeb3Auth = async () => {
       if (!clientId) {
-        console.error("Web3Auth clientId is missing. Set it in .env.local");
+        console.error("Web3Auth clientId is missing. Set it in .env");
         return;
       }
 
@@ -59,6 +61,8 @@ export default function LoginPage() {
         setWeb3Auth(web3authInstance);
 
         if (web3authInstance.connected) {
+          const user = await web3authInstance.getUserInfo();
+          setUserInfo(user);
           router.push("/"); // Redirect to home after login
         }
       } catch (error) {
@@ -71,6 +75,22 @@ export default function LoginPage() {
     initWeb3Auth();
   }, [router]);
 
+  useEffect(() => {
+    const registerUser = async () => {
+      if (userInfo && userInfo.email) {
+        try {
+          console.log("🔄 Creating user in DB...", userInfo);
+          await createUser(userInfo.email, userInfo.name || "Anonymous User");
+          console.log("✅ User successfully created in DB!");
+        } catch (error) {
+          console.error("❌ Error creating user in DB:", error);
+        }
+      }
+    };
+
+    registerUser();
+  }, [userInfo]);
+
   const login = async () => {
     if (!web3auth) {
       console.log("Web3Auth is not ready yet.");
@@ -81,6 +101,19 @@ export default function LoginPage() {
       console.log("Logging in...");
       await web3auth.connect();
       console.log("User logged in successfully");
+
+      const user = await web3auth.getUserInfo();
+
+      if (user && user.email) {
+        console.log("👤 User Info:", user);
+        setUserInfo(user);
+
+        // ✅ Store user email safely after ensuring it's available
+        localStorage.setItem("userEmail", user.email);
+      } else {
+        console.error("❌ User email is missing after login.");
+      }
+
       router.push("/"); // Redirect to home after login
     } catch (error) {
       console.error("Login error:", error);

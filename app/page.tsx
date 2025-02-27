@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Leaf, Recycle, Users, Coins, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -9,9 +9,6 @@ import {
   getAllRewards,
   getWasteCollectionTasks,
 } from "@/utils/db/actions";
-import { Web3Auth } from "@web3auth/modal";
-import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
-import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import ImpactCard from "@/components/ImpactCard";
 import FeatureCard from "@/components/FeatureCard";
 import ActionButton from "@/components/ActionButton";
@@ -22,19 +19,6 @@ const poppins = Poppins({
   subsets: ["latin"],
   display: "swap",
 });
-
-const clientId = process.env.WEB3AUTH_CLIENT_ID;
-
-const chainConfig = {
-  chainNamespace: CHAIN_NAMESPACES.EIP155,
-  chainId: "0xaa36a7",
-  rpcTarget: "https://rpc.ankr.com/eth_sepolia",
-  displayName: "Ethereum Sepolia Testnet",
-  blockExplorerUrl: "https://sepolia.etherscan.io",
-  ticker: "ETH",
-  tickerName: "Ethereum",
-  logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
-};
 
 function AnimatedGlobe() {
   return (
@@ -51,7 +35,6 @@ function AnimatedGlobe() {
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
   const router = useRouter();
-  const web3authRef = useRef<Web3Auth | null>(null);
   const [impactData, setImpactData] = useState({
     wasteCollected: 0,
     reportsSubmitted: 0,
@@ -61,33 +44,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function initWeb3Auth() {
-      if (!web3authRef.current) {
-        web3authRef.current = new Web3Auth({
-          clientId,
-          web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
-          privateKeyProvider: new EthereumPrivateKeyProvider({
-            config: { chainConfig },
-          }),
-        });
-        await web3authRef.current.initModal();
-        if (web3authRef.current.connected) {
-          setLoggedIn(true);
-        }
-      }
-    }
-    initWeb3Auth();
-  }, []);
-
-  const login = useCallback(async () => {
-    try {
-      await web3authRef.current?.connect();
+    const userEmail = localStorage.getItem("userEmail");
+    if (userEmail) {
       setLoggedIn(true);
-      router.push("/report");
-    } catch (error) {
-      console.error("Login failed:", error);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     async function fetchImpactData() {
@@ -131,6 +92,14 @@ export default function Home() {
     fetchImpactData();
   }, []);
 
+  const handleButtonClick = () => {
+    if (loggedIn) {
+      router.push("/report");
+    } else {
+      router.push("/login");
+    }
+  };
+
   return (
     <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
       <section className="text-center mb-20">
@@ -143,7 +112,7 @@ export default function Home() {
           rewarding!
         </p>
         <ActionButton
-          onClick={loggedIn ? () => router.push("/report") : login}
+          onClick={handleButtonClick}
           label={loggedIn ? "Report Waste" : "Get Started"}
         />
       </section>

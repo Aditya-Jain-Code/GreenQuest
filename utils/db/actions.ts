@@ -11,16 +11,22 @@ import { eq, sql, and, desc, ne } from "drizzle-orm";
 
 export async function createUser(email: string, name: string) {
   try {
-    // Check if user already exists
+    console.log("🔍 Checking if user exists with email:", email);
+
     const existingUser = await db
       .select()
       .from(Users)
       .where(eq(Users.email, email))
       .execute();
 
+    console.log("✅ Existing user check result:", existingUser);
+
     if (existingUser.length > 0) {
+      console.log("⚠️ User already exists, returning existing user.");
       return existingUser[0]; // Return the existing user
     }
+
+    console.log("🆕 Creating new user with email:", email);
 
     // Insert new user if they don't exist
     const [user] = await db
@@ -29,9 +35,10 @@ export async function createUser(email: string, name: string) {
       .returning()
       .execute();
 
+    console.log("✅ User created successfully:", user);
     return user;
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("❌ Error creating user:", error);
     return null;
   }
 }
@@ -409,6 +416,101 @@ export async function saveCollectedWaste(
     return collectedWaste;
   } catch (error) {
     console.error("Error saving collected waste:", error);
+    throw error;
+  }
+}
+
+export async function getOrCreateReward(userId: number) {
+  try {
+    let [reward] = await db
+      .select()
+      .from(Rewards)
+      .where(eq(Rewards.userId, userId))
+      .execute();
+    if (!reward) {
+      [reward] = await db
+        .insert(Rewards)
+        .values({
+          userId,
+          name: "Default Reward",
+          collectionInfo: "Default Collection Info",
+          points: 0,
+          level: 1,
+          isAvailable: true,
+        })
+        .returning()
+        .execute();
+    }
+    return reward;
+  } catch (error) {
+    console.error("Error getting or creating reward:", error);
+    return null;
+  }
+}
+
+export async function redeemReward(userId: number, rewardId: number) {
+  try {
+    const userReward = (await getOrCreateReward(userId)) as any;
+
+    if (rewardId === 0) {
+      // Redeem all points
+      const [updatedReward] = await db
+        .update(Rewards)
+        .set({
+          points: 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(Rewards.userId, userId))
+        .returning()
+        .execute();
+
+      // Create a transaction for this redemption
+      await createTransaction(
+        userId,
+        "redeemed",
+        userReward.points,
+        `Redeemed all points: ${userReward.points}`
+      );
+
+      return updatedReward;
+    } else {
+      // Existing logic for redeeming specific rewards
+      const availableReward = await db
+        .select()
+        .from(Rewards)
+        .where(eq(Rewards.id, rewardId))
+        .execute();
+
+      if (
+        !userReward ||
+        !availableReward[0] ||
+        userReward.points < availableReward[0].points
+      ) {
+        throw new Error("Insufficient points or invalid reward");
+      }
+
+      const [updatedReward] = await db
+        .update(Rewards)
+        .set({
+          points: sql`${Rewards.points} - ${availableReward[0].points}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(Rewards.userId, userId))
+        .returning()
+        .execute();
+
+      // Create a transaction for this redemption
+      await createTransaction(
+        userId,
+        "redeemed",
+        availableReward[0].points,
+        `Redeemed: ${availableReward[0].name}`
+      );
+
+      return updatedReward;
+    }
+  } catch (error) {
+    console.error("Error redeeming reward:", error);
     throw error;
   }
 }

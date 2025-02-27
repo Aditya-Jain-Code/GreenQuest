@@ -68,8 +68,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [balance, setBalance] = useState(0);
 
-  console.log("user info", userInfo);
-
   useEffect(() => {
     const initializeWeb3Auth = async () => {
       if (web3auth) return; // Prevent multiple initializations
@@ -84,35 +82,41 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
         setWeb3Auth(web3authInstance);
         await web3authInstance.initModal(); // Initialize Web3Auth modal
+
         setProvider(web3authInstance.provider);
-        setLoading(false); // ✅ Update loading state
+
+        if (web3authInstance.connected) {
+          setLoggedIn(true);
+          const user = await web3authInstance.getUserInfo();
+          setUserInfo(user);
+        }
+
+        setLoading(false);
         console.log("✅ Web3Auth Ready!");
       } catch (error) {
         console.error("❌ Web3Auth initialization failed:", error);
-        setLoading(false); // ✅ Ensure UI doesn't get stuck
+        setLoading(false);
       }
     };
 
     initializeWeb3Auth();
-  }, []); // Only runs once when the component mounts
+  }, []);
 
   useEffect(() => {
-    const initWeb3Auth = async () => {
-      try {
-        if (!web3auth) return; // Ensure web3auth is set before proceeding
-
-        console.log("🟢 Attempting to initialize Web3Auth...");
-        await web3auth.initModal();
-        console.log("✅ Web3Auth Ready!");
-
-        setProvider(web3auth.provider);
-      } catch (error) {
-        console.error("❌ Web3Auth initialization failed:", error);
+    const registerUser = async () => {
+      if (userInfo && userInfo.email) {
+        try {
+          console.log("🔄 Creating user in DB...", userInfo);
+          await createUser(userInfo.email, userInfo.name || "Anonymous User");
+          console.log("✅ User successfully created in DB!");
+        } catch (error) {
+          console.error("❌ Error creating user in DB:", error);
+        }
       }
     };
 
-    initWeb3Auth();
-  }, [web3auth]); // Depend on `web3auth`
+    registerUser();
+  }, [userInfo]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -260,7 +264,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
             <Leaf className="h-6 w-6 md:h-8 md:w-8 text-green-500 mr-1 md:mr-2" />
             <div className="flex flex-col">
               <span className="font-bold text-base md:text-lg text-gray-800">
-                Zero2Hero
+                GreenQuest
               </span>
             </div>
           </Link>

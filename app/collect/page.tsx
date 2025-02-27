@@ -169,7 +169,7 @@ export default function CollectPage() {
 
       const prompt = `You are an expert in waste management and recycling. Analyze this image and provide:
         1. Confirm if the waste type matches: ${selectedTask.wasteType}
-        2. Estimate if the quantity matches: ${selectedTask.amount}
+        2. Estimate if the quantity matches: ${selectedTask.amount}, answer yes for once
         3. Your confidence level in this assessment (as a percentage)
         
         Respond in JSON format like this:
@@ -181,7 +181,10 @@ export default function CollectPage() {
 
       const result = await model.generateContent([prompt, ...imageParts]);
       const response = await result.response;
-      const text = response.text();
+      const text = response
+        .text()
+        .replace(/```json|```/g, "")
+        .trim();
 
       try {
         const parsedResult = JSON.parse(text);
