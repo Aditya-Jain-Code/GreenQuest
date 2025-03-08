@@ -7,10 +7,6 @@ import {
   MapPin,
   CheckCircle,
   Clock,
-  ArrowRight,
-  Camera,
-  Upload,
-  Loader,
   Calendar,
   Weight,
   Search,
@@ -21,11 +17,8 @@ import { toast } from "react-hot-toast";
 import {
   getWasteCollectionTasks,
   updateTaskStatus,
-  saveReward,
-  saveCollectedWaste,
   getUserByEmail,
 } from "@/utils/db/actions";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useRouter } from "next/navigation";
 
 type CollectionTask = {
@@ -86,20 +79,6 @@ export default function CollectPage() {
     fetchUserAndTasks();
   }, []);
 
-  const [selectedTask, setSelectedTask] = useState<CollectionTask | null>(null);
-  const [verificationImage, setVerificationImage] = useState<string | null>(
-    null
-  );
-  const [verificationStatus, setVerificationStatus] = useState<
-    "idle" | "verifying" | "success" | "failure"
-  >("idle");
-  const [verificationResult, setVerificationResult] = useState<{
-    wasteTypeMatch: boolean;
-    quantityMatch: boolean;
-    confidence: number;
-  } | null>(null);
-  const [reward, setReward] = useState<number | null>(null);
-
   const handleStatusChange = async (
     taskId: number,
     newStatus: CollectionTask["status"]
@@ -126,115 +105,6 @@ export default function CollectPage() {
     } catch (error) {
       console.error("Error updating task status:", error);
       toast.error("Failed to update task status. Please try again.");
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setVerificationImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const readFileAsBase64 = (dataUrl: string): string => {
-    return dataUrl.split(",")[1];
-  };
-
-  const handleVerify = async () => {
-    if (!selectedTask || !verificationImage || !user) {
-      toast.error("Missing required information for verification.");
-      return;
-    }
-
-    setVerificationStatus("verifying");
-
-    try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-
-      const base64Data = readFileAsBase64(verificationImage);
-
-      const imageParts = [
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: "image/jpeg", // Adjust this if you know the exact type
-          },
-        },
-      ];
-
-      const prompt = `You are an expert in waste management and recycling. Analyze this image and provide:
-        1. Confirm if the waste type matches: ${selectedTask.wasteType}
-        2. Estimate if the quantity matches: ${selectedTask.amount}, answer yes for once
-        3. Your confidence level in this assessment (as a percentage)
-        
-        Respond in JSON format like this:
-        {
-          "wasteTypeMatch": true/false,
-          "quantityMatch": true/false,
-          "confidence": confidence level as a number between 0 and 1
-        }`;
-
-      const result = await model.generateContent([prompt, ...imageParts]);
-      const response = await result.response;
-      const text = response
-        .text()
-        .replace(/```json|```/g, "")
-        .trim();
-
-      try {
-        const parsedResult = JSON.parse(text);
-        setVerificationResult({
-          wasteTypeMatch: parsedResult.wasteTypeMatch,
-          quantityMatch: parsedResult.quantityMatch,
-          confidence: parsedResult.confidence,
-        });
-        setVerificationStatus("success");
-
-        if (
-          parsedResult.wasteTypeMatch &&
-          parsedResult.quantityMatch &&
-          parsedResult.confidence > 0.7
-        ) {
-          await handleStatusChange(selectedTask.id, "verified");
-          const earnedReward = Math.floor(Math.random() * 50) + 10; // Random reward between 10 and 59
-
-          // Save the reward
-          await saveReward(user.id, earnedReward);
-
-          // Save the collected waste
-          await saveCollectedWaste(selectedTask.id, user.id, parsedResult);
-
-          setReward(earnedReward);
-          toast.success(
-            `Verification successful! You earned ${earnedReward} tokens!`,
-            {
-              duration: 5000,
-              position: "top-center",
-            }
-          );
-        } else {
-          toast.error(
-            "Verification failed. The collected waste does not match the reported waste.",
-            {
-              duration: 5000,
-              position: "top-center",
-            }
-          );
-        }
-      } catch (error) {
-        console.log(error);
-
-        console.error("Failed to parse JSON response:", text);
-        setVerificationStatus("failure");
-      }
-    } catch (error) {
-      console.error("Error verifying waste:", error);
-      setVerificationStatus("failure");
     }
   };
 
@@ -269,7 +139,7 @@ export default function CollectPage() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader className="animate-spin h-8 w-8 text-gray-500" />
+          <span>Loading...</span>
         </div>
       ) : (
         <>
@@ -324,16 +194,6 @@ export default function CollectPage() {
                     </Button>
                   )}
                   {task.status === "in_progress" &&
-                    task.collectorId === user?.id && (
-                      <Button
-                        onClick={() => setSelectedTask(task)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Complete & Verify
-                      </Button>
-                    )}
-                  {task.status === "in_progress" &&
                     task.collectorId !== user?.id && (
                       <span className="text-yellow-600 text-sm font-medium">
                         In progress by another collector
@@ -348,133 +208,7 @@ export default function CollectPage() {
               </div>
             ))}
           </div>
-
-          <div className="mt-4 flex justify-center">
-            <Button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="mr-2"
-            >
-              Previous
-            </Button>
-            <span className="mx-2 self-center">
-              Page {currentPage} of {pageCount}
-            </span>
-            <Button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, pageCount))
-              }
-              disabled={currentPage === pageCount}
-              className="ml-2"
-            >
-              Next
-            </Button>
-          </div>
         </>
-      )}
-
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold mb-4">Verify Collection</h3>
-            <p className="mb-4 text-sm text-gray-600">
-              Upload a photo of the collected waste to verify and earn your
-              reward.
-            </p>
-            <div className="mb-4">
-              <label
-                htmlFor="verification-image"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Upload Image
-              </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                <div className="space-y-1 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label
-                      htmlFor="verification-image"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                    >
-                      <span>Upload a file</span>
-                      <input
-                        id="verification-image"
-                        name="verification-image"
-                        type="file"
-                        className="sr-only"
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                      />
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                </div>
-              </div>
-            </div>
-            {verificationImage && (
-              <img
-                src={verificationImage}
-                alt="Verification"
-                className="mb-4 rounded-md w-full"
-              />
-            )}
-            <Button
-              onClick={handleVerify}
-              className="w-full"
-              disabled={
-                !verificationImage || verificationStatus === "verifying"
-              }
-            >
-              {verificationStatus === "verifying" ? (
-                <>
-                  <Loader className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                  Verifying...
-                </>
-              ) : (
-                "Verify Collection"
-              )}
-            </Button>
-            {verificationStatus === "success" && verificationResult && (
-              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-                <p>
-                  Waste Type Match:{" "}
-                  {verificationResult.wasteTypeMatch ? "Yes" : "No"}
-                </p>
-                <p>
-                  Quantity Match:{" "}
-                  {verificationResult.quantityMatch ? "Yes" : "No"}
-                </p>
-                <p>
-                  Confidence: {(verificationResult.confidence * 100).toFixed(2)}
-                  %
-                </p>
-              </div>
-            )}
-            {verificationStatus === "failure" && (
-              <p className="mt-2 text-red-600 text-center text-sm">
-                Verification failed. Please try again.
-              </p>
-            )}
-            <Button
-              onClick={() => setSelectedTask(null)}
-              variant="outline"
-              className="w-full mt-2"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Add a conditional render to show user info or login prompt */}
-      {user ? (
-        <p className="text-sm text-gray-600 mb-4">Logged in as: {user.name}</p>
-      ) : (
-        <p className="text-sm text-red-600 mb-4">
-          Please log in to collect waste and earn rewards.
-        </p>
       )}
     </div>
   );

@@ -7,26 +7,19 @@ import {
   Notifications,
   Transactions,
 } from "./schema";
-import { eq, sql, and, desc, ne } from "drizzle-orm";
+import { eq, sql, and, desc } from "drizzle-orm";
 
 export async function createUser(email: string, name: string) {
   try {
-    console.log("🔍 Checking if user exists with email:", email);
-
     const existingUser = await db
       .select()
       .from(Users)
       .where(eq(Users.email, email))
       .execute();
 
-    console.log("✅ Existing user check result:", existingUser);
-
     if (existingUser.length > 0) {
-      console.log("⚠️ User already exists, returning existing user.");
       return existingUser[0]; // Return the existing user
     }
-
-    console.log("🆕 Creating new user with email:", email);
 
     // Insert new user if they don't exist
     const [user] = await db
@@ -35,7 +28,6 @@ export async function createUser(email: string, name: string) {
       .returning()
       .execute();
 
-    console.log("✅ User created successfully:", user);
     return user;
   } catch (error) {
     console.error("❌ Error creating user:", error);
@@ -189,7 +181,6 @@ export async function getRecentReports(limit: number = 10) {
     return [];
   }
 }
-
 export async function getAllRewards() {
   try {
     const rewards = await db
@@ -199,11 +190,13 @@ export async function getAllRewards() {
         points: Rewards.points,
         level: Rewards.level,
         createdAt: Rewards.createdAt,
-        userName: Users.name,
+        name: Rewards.name, // Add this field
+        description: Rewards.description, // Add this field
+        userName: Users.name, // This is from the Users table
       })
       .from(Rewards)
-      .leftJoin(Users, eq(Rewards.userId, Users.id))
-      .orderBy(desc(Rewards.points))
+      .leftJoin(Users, eq(Rewards.userId, Users.id)) // Join with Users table
+      .orderBy(desc(Rewards.points)) // Order by points in descending order
       .execute();
 
     return rewards;
@@ -259,6 +252,31 @@ export async function createNotification(
 
 export async function updateRewardPoints(userId: number, pointsToAdd: number) {
   try {
+    // Check if the "Waste Reporting Reward" exists for the user
+    const existingReward = await db
+      .select()
+      .from(Rewards)
+      .where(eq(Rewards.userId, userId))
+      .execute();
+
+    // If the reward doesn't exist, create it
+    if (existingReward.length === 0) {
+      await db
+        .insert(Rewards)
+        .values({
+          userId: userId,
+          name: "Waste Reporting Reward",
+          points: 0, // Start with 0 points
+          level: 1, // Default level
+          description: "Reward for reporting waste in the app.",
+          collectionInfo:
+            "This reward is automatically awarded for reporting waste.",
+          isAvailable: true,
+        })
+        .execute();
+    }
+
+    // Update the reward points
     const [updatedReward] = await db
       .update(Rewards)
       .set({
@@ -268,6 +286,7 @@ export async function updateRewardPoints(userId: number, pointsToAdd: number) {
       .where(eq(Rewards.userId, userId))
       .returning()
       .execute();
+
     return updatedReward;
   } catch (error) {
     console.error("Error updating reward points:", error);
@@ -300,7 +319,6 @@ export async function createReport(
   wasteType: string,
   amount: string,
   imageUrl?: string,
-  type?: string,
   verificationResult?: any
 ) {
   try {
@@ -327,7 +345,7 @@ export async function createReport(
       userId,
       "earned_report",
       pointsEarned,
-      "Points earned for reporting waste"
+      "Points earned for making a waste report."
     );
 
     // Create a notification for the user
@@ -367,27 +385,35 @@ export async function updateTaskStatus(
   }
 }
 
-export async function saveReward(userId: number, amount: number) {
+export async function saveReward(
+  userId: number,
+  amount: number,
+  name: string, // Add this parameter
+  description: string
+) {
   try {
     const [reward] = await db
       .insert(Rewards)
       .values({
         userId,
-        name: "Waste Collection Reward",
+        name, // Use the name parameter
         collectionInfo: "Points earned from waste collection",
         points: amount,
         level: 1,
         isAvailable: true,
+        description: description,
       })
       .returning()
       .execute();
 
     // Create a transaction for this reward
-    await createTransaction(
+    await createTransaction(userId, "earned_collect", amount, description);
+
+    // Create a notification for the user
+    await createNotification(
       userId,
-      "earned_collect",
-      amount,
-      "Points earned for collecting waste"
+      `You've earned ${amount} points for waste report completion!`,
+      "reward"
     );
 
     return reward;
@@ -399,8 +425,7 @@ export async function saveReward(userId: number, amount: number) {
 
 export async function saveCollectedWaste(
   reportId: number,
-  collectorId: number,
-  verificationResult: any
+  collectorId: number
 ) {
   try {
     const [collectedWaste] = await db
@@ -512,5 +537,188 @@ export async function redeemReward(userId: number, rewardId: number) {
   } catch (error) {
     console.error("Error redeeming reward:", error);
     throw error;
+  }
+}
+
+export async function getAllUsers() {
+  try {
+    const users = await db.select().from(Users).execute();
+    console.log(`✅ Retrieved ${users.length} users.`);
+    return users;
+  } catch (error) {
+    console.error(
+      "❌ Error fetching users:",
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
+    return [];
+  }
+}
+
+export async function deleteUser(userId: number) {
+  try {
+    const deleted = await db
+      .delete(Users)
+      .where(eq(Users.id, userId))
+      .execute();
+    if (deleted.rowCount === 0) throw new Error("User not found.");
+
+    console.log(`✅ User with ID ${userId} deleted.`);
+    return { success: true };
+  } catch (error) {
+    console.error(
+      "❌ Error deleting user:",
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function getAllReports() {
+  try {
+    const reports = await db
+      .select({
+        id: Reports.id,
+        userId: Reports.userId,
+        location: Reports.location,
+        wasteType: Reports.wasteType,
+        amount: Reports.amount,
+        imageUrl: Reports.imageUrl,
+        status: Reports.status,
+        createdAt: Reports.createdAt,
+        collectorId: Reports.collectorId,
+      })
+      .from(Reports)
+      .orderBy(desc(Reports.createdAt))
+      .execute();
+
+    console.log(`✅ Retrieved ${reports.length} reports.`);
+    return reports;
+  } catch (error) {
+    console.error(
+      "❌ Error fetching reports:",
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
+    return [];
+  }
+}
+
+export async function deleteReport(reportId: number) {
+  try {
+    const deleted = await db
+      .delete(Reports)
+      .where(eq(Reports.id, reportId))
+      .execute();
+    if (deleted.rowCount === 0) throw new Error("Report not found.");
+
+    console.log(`✅ Report with ID ${reportId} deleted.`);
+    return { success: true };
+  } catch (error) {
+    console.error(
+      "❌ Error deleting report:",
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function deleteReward(rewardId: number) {
+  try {
+    // Ensure the reward exists before deleting
+    const rewardExists = await db
+      .select()
+      .from(Rewards)
+      .where(eq(Rewards.id, rewardId))
+      .execute();
+
+    if (!rewardExists.length) {
+      throw new Error(`Reward with ID ${rewardId} not found.`);
+    }
+
+    // Get the userId from the reward
+    const userId = rewardExists[0].userId;
+
+    // Optional: Delete transactions related to the reward (if needed)
+    // This assumes that reward-related transactions have a specific description or type
+    await db
+      .delete(Transactions)
+      .where(
+        and(
+          eq(Transactions.userId, userId), // Filter by user
+          eq(Transactions.type, "earned_collect") // Filter by transaction type
+        )
+      )
+      .execute();
+
+    // Delete the reward
+    const deleted = await db
+      .delete(Rewards)
+      .where(eq(Rewards.id, rewardId))
+      .returning()
+      .execute();
+
+    if (!deleted.length) {
+      throw new Error(`Failed to delete reward with ID ${rewardId}.`);
+    }
+
+    console.log(`✅ Reward with ID ${rewardId} deleted.`);
+    return { success: true };
+  } catch (error) {
+    console.error(
+      "❌ Error deleting reward:",
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+const VALID_STATUSES = ["pending", "in_progress", "completed", "cancelled"];
+
+export async function updateReportStatus(reportId: number, newStatus: string) {
+  try {
+    // Validate status
+    if (!VALID_STATUSES.includes(newStatus)) {
+      throw new Error(`Invalid status: ${newStatus}`);
+    }
+
+    // Ensure report exists
+    const existingReport = await db
+      .select()
+      .from(Reports)
+      .where(eq(Reports.id, reportId))
+      .limit(1)
+      .execute();
+
+    if (existingReport.length === 0) {
+      throw new Error(`Report with ID ${reportId} not found.`);
+    }
+
+    // Update the report status
+    const [updatedReport] = await db
+      .update(Reports)
+      .set({ status: newStatus })
+      .where(eq(Reports.id, reportId))
+      .returning()
+      .execute();
+
+    console.log(`✅ Report ID ${reportId} status updated to ${newStatus}`);
+    return { success: true, updatedReport };
+  } catch (error) {
+    console.error(
+      "❌ Error updating report status:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
   }
 }
