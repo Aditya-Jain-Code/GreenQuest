@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { MapPin, Upload, CheckCircle, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -28,6 +28,7 @@ export default function ReportPage() {
   } | null>(null);
 
   const router = useRouter();
+  const toastShown = useRef(false); // Track if toast has been shown
 
   const [reports, setReports] = useState<
     Array<{
@@ -227,7 +228,10 @@ export default function ReportPage() {
       const email = localStorage.getItem("userEmail");
 
       if (!email) {
-        toast.error("User not logged in. Please log in.");
+        if (!toastShown.current) {
+          toast.error("User not logged in. Please log in.");
+          toastShown.current = true;
+        }
         router.push("/login");
         return;
       }
@@ -236,7 +240,10 @@ export default function ReportPage() {
         const userData = await getUserByEmail(email);
 
         if (!userData) {
-          toast.error("User not found. Please log in again.");
+          if (!toastShown.current) {
+            toast.error("User not found. Please log in again.");
+            toastShown.current = true;
+          }
           router.push("/login");
         } else {
           setUser(userData);
@@ -251,7 +258,10 @@ export default function ReportPage() {
         }
       } catch (error) {
         console.error("Error fetching user:", error);
-        toast.error("An error occurred. Please try logging in again.");
+        if (!toastShown.current) {
+          toast.error("An error occurred. Please try logging in again.");
+          toastShown.current = true;
+        }
         router.push("/login");
       }
     };

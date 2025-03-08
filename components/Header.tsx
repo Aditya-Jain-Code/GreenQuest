@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -67,6 +67,8 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [balance, setBalance] = useState(0);
+
+  const router = useRouter();
 
   useEffect(() => {
     const initializeWeb3Auth = async () => {
@@ -206,6 +208,8 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
       setLoggedIn(false);
       setUserInfo(null);
       localStorage.removeItem("userEmail");
+
+      router.refresh();
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -344,7 +348,10 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
                   <Link href="/settings">Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>
+                <DropdownMenuItem onClick={logout}>
+                  Sign Out
+                </DropdownMenuItem>{" "}
+                {/* Updated */}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

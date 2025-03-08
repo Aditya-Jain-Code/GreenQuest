@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Trash2,
   MapPin,
@@ -35,6 +35,7 @@ const ITEMS_PER_PAGE = 5;
 
 export default function CollectPage() {
   const router = useRouter();
+  const toastShown = useRef(false);
   const [tasks, setTasks] = useState<CollectionTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredWasteType, setHoveredWasteType] = useState<string | null>(null);
@@ -50,22 +51,22 @@ export default function CollectPage() {
     const fetchUserAndTasks = async () => {
       setLoading(true);
       try {
-        // Fetch user
         const userEmail = localStorage.getItem("userEmail");
         if (userEmail) {
           const fetchedUser = await getUserByEmail(userEmail);
           if (fetchedUser) {
             setUser(fetchedUser);
-          } else {
+          } else if (!toastShown.current) {
             toast.error("User not found. Please log in again.");
+            toastShown.current = true;
             router.push("/login");
           }
-        } else {
+        } else if (!toastShown.current) {
           toast.error("User not logged in. Please log in.");
+          toastShown.current = true;
           router.push("/login");
         }
 
-        // Fetch tasks
         const fetchedTasks = await getWasteCollectionTasks();
         setTasks(fetchedTasks as CollectionTask[]);
       } catch (error) {

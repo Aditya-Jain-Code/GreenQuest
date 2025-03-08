@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Coins,
   ArrowUpRight,
@@ -18,6 +18,7 @@ import {
   createTransaction,
 } from "@/utils/db/actions";
 import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type Transaction = {
   id: number;
@@ -46,6 +47,9 @@ export default function RewardsPage() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const router = useRouter();
+  const toastShown = useRef(false); // Track if toast has been shown
+
   useEffect(() => {
     const fetchUserDataAndRewards = async () => {
       setLoading(true);
@@ -70,11 +74,15 @@ export default function RewardsPage() {
               0
             );
             setBalance(Math.max(calculatedBalance, 0)); // Ensure balance is never negative
-          } else {
+          } else if (!toastShown.current) {
             toast.error("User not found. Please log in again.");
+            toastShown.current = true;
+            router.push("/login");
           }
-        } else {
+        } else if (!toastShown.current) {
           toast.error("User not logged in. Please log in.");
+          toastShown.current = true;
+          router.push("/login");
         }
       } catch (error) {
         console.error("Error fetching user data and rewards:", error);
@@ -85,7 +93,7 @@ export default function RewardsPage() {
     };
 
     fetchUserDataAndRewards();
-  }, []);
+  }, [router]);
 
   const handleRedeemReward = async (rewardId: number) => {
     if (!user) {

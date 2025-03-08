@@ -13,7 +13,7 @@ import {
 
 const sidebarItems = [
   { href: "/", icon: Home, label: "Home" },
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Progress Dashboard" },
   { href: "/report", icon: MapPin, label: "Report Waste" },
   { href: "/collect", icon: Trash, label: "Collect Waste" },
   { href: "/rewards", icon: Coins, label: "Rewards" },

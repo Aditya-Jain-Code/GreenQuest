@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getAllRewards, getUserByEmail } from "@/utils/db/actions";
 import { Loader, Award, User, Trophy, Crown } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type Reward = {
   id: number;
@@ -23,10 +24,14 @@ export default function LeaderboardPage() {
     name: string;
   } | null>(null);
 
+  const router = useRouter();
+  const toastShown = useRef(false); // Track if toast has been shown
+
   useEffect(() => {
     const fetchRewardsAndUser = async () => {
       setLoading(true);
       try {
+        // Fetch rewards
         const fetchedRewards = await getAllRewards();
 
         // Aggregate rewards by user
@@ -49,16 +54,21 @@ export default function LeaderboardPage() {
 
         setRewards(aggregatedRewards);
 
+        // Fetch user
         const userEmail = localStorage.getItem("userEmail");
         if (userEmail) {
           const fetchedUser = await getUserByEmail(userEmail);
           if (fetchedUser) {
             setUser(fetchedUser);
-          } else {
+          } else if (!toastShown.current) {
             toast.error("User not found. Please log in again.");
+            toastShown.current = true;
+            router.push("/login");
           }
-        } else {
+        } else if (!toastShown.current) {
           toast.error("User not logged in. Please log in.");
+          toastShown.current = true;
+          router.push("/login");
         }
       } catch (error) {
         console.error("Error fetching rewards and user:", error);
@@ -69,7 +79,7 @@ export default function LeaderboardPage() {
     };
 
     fetchRewardsAndUser();
-  }, []);
+  }, [router]);
 
   return (
     <div className="">
