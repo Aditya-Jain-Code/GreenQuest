@@ -28,7 +28,6 @@ export default function LeaderboardPage() {
       setLoading(true);
       try {
         const fetchedRewards = await getAllRewards();
-        console.log("Fetched Rewards: ", fetchedRewards);
 
         // Aggregate rewards by user
         const aggregatedRewards = fetchedRewards.reduce(

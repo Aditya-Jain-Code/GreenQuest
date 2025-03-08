@@ -66,7 +66,6 @@ export async function getUnreadNotifications(userId: number) {
 
 export async function getRewardTransactions(userId: number) {
   try {
-    console.log("Fetching transactions for user ID:", userId);
     const transactions = await db
       .select({
         id: Transactions.id,
@@ -81,14 +80,11 @@ export async function getRewardTransactions(userId: number) {
       .limit(10)
       .execute();
 
-    console.log("Raw transactions from database:", transactions);
-
     const formattedTransactions = transactions.map((t) => ({
       ...t,
       date: t.date.toISOString().split("T")[0], // Format date as YYYY-MM-DD
     }));
 
-    console.log("Formatted transactions:", formattedTransactions);
     return formattedTransactions;
   } catch (error) {
     console.error("Error fetching reward transactions:", error);
@@ -120,8 +116,6 @@ export async function markNotificationAsRead(notificationId: number) {
 
 export async function getAvailableRewards(userId: number) {
   try {
-    console.log("Fetching available rewards for user:", userId);
-
     // Get user's total points
     const userTransactions = await getRewardTransactions(userId);
     const userPoints = userTransactions.reduce((total, transaction) => {
@@ -129,8 +123,6 @@ export async function getAvailableRewards(userId: number) {
         ? total + transaction.amount
         : total - transaction.amount;
     }, 0);
-
-    console.log("User total points:", userPoints);
 
     // Get available rewards from the database
     const dbRewards = await db
@@ -145,8 +137,6 @@ export async function getAvailableRewards(userId: number) {
       .where(eq(Rewards.isAvailable, true))
       .execute();
 
-    console.log("Rewards from database:", dbRewards);
-
     // Combine user points and database rewards
     const allRewards = [
       {
@@ -159,7 +149,6 @@ export async function getAvailableRewards(userId: number) {
       ...dbRewards,
     ];
 
-    console.log("All available rewards:", allRewards);
     return allRewards;
   } catch (error) {
     console.error("Error fetching available rewards:", error);
@@ -339,6 +328,7 @@ export async function createReport(
     // Award 10 points for reporting waste
     const pointsEarned = 10;
     await updateRewardPoints(userId, pointsEarned);
+    await updateUserLevel(userId);
 
     // Create a transaction for the earned points
     await createTransaction(
@@ -497,6 +487,8 @@ export async function redeemReward(userId: number, rewardId: number) {
         `Redeemed all points: ${userReward.points}`
       );
 
+      await updateUserLevel(userId);
+
       return updatedReward;
     } else {
       // Existing logic for redeeming specific rewards
@@ -532,6 +524,8 @@ export async function redeemReward(userId: number, rewardId: number) {
         `Redeemed: ${availableReward[0].name}`
       );
 
+      await updateUserLevel(userId);
+
       return updatedReward;
     }
   } catch (error) {
@@ -543,7 +537,6 @@ export async function redeemReward(userId: number, rewardId: number) {
 export async function getAllUsers() {
   try {
     const users = await db.select().from(Users).execute();
-    console.log(`✅ Retrieved ${users.length} users.`);
     return users;
   } catch (error) {
     console.error(
@@ -562,7 +555,6 @@ export async function deleteUser(userId: number) {
       .execute();
     if (deleted.rowCount === 0) throw new Error("User not found.");
 
-    console.log(`✅ User with ID ${userId} deleted.`);
     return { success: true };
   } catch (error) {
     console.error(
@@ -594,7 +586,6 @@ export async function getAllReports() {
       .orderBy(desc(Reports.createdAt))
       .execute();
 
-    console.log(`✅ Retrieved ${reports.length} reports.`);
     return reports;
   } catch (error) {
     console.error(
@@ -613,7 +604,6 @@ export async function deleteReport(reportId: number) {
       .execute();
     if (deleted.rowCount === 0) throw new Error("Report not found.");
 
-    console.log(`✅ Report with ID ${reportId} deleted.`);
     return { success: true };
   } catch (error) {
     console.error(
@@ -666,7 +656,6 @@ export async function deleteReward(rewardId: number) {
       throw new Error(`Failed to delete reward with ID ${rewardId}.`);
     }
 
-    console.log(`✅ Reward with ID ${rewardId} deleted.`);
     return { success: true };
   } catch (error) {
     console.error(
@@ -709,7 +698,6 @@ export async function updateReportStatus(reportId: number, newStatus: string) {
       .returning()
       .execute();
 
-    console.log(`✅ Report ID ${reportId} status updated to ${newStatus}`);
     return { success: true, updatedReport };
   } catch (error) {
     console.error(
@@ -722,3 +710,57 @@ export async function updateReportStatus(reportId: number, newStatus: string) {
     };
   }
 }
+
+const calculateUserLevel = (waste: number, reports: number, points: number) => {
+  if (waste >= 500 || reports >= 200 || points >= 5000) return 5;
+  if (waste >= 300 || reports >= 100 || points >= 3000) return 4;
+  if (waste >= 150 || reports >= 50 || points >= 1500) return 3;
+  if (waste >= 50 || reports >= 20 || points >= 500) return 2;
+  return 1;
+};
+
+export const updateUserLevel = async (userId: number) => {
+  try {
+    // Fetch user's total waste from completed reports
+    const wasteData = await db
+      .select({ amount: Reports.amount })
+      .from(Reports)
+      .where(and(eq(Reports.userId, userId), eq(Reports.status, "completed")))
+      .execute();
+
+    const totalWaste = wasteData.reduce(
+      (sum, report) => sum + (parseFloat(report.amount) || 0),
+      0
+    );
+
+    // Get completed reports count
+    const reportCount = wasteData.length;
+
+    // Fetch user's total earned points
+    const tokenData = await db
+      .select({ amount: Transactions.amount })
+      .from(Transactions)
+      .where(
+        and(
+          eq(Transactions.userId, userId),
+          eq(Transactions.type, "earned_collect")
+        )
+      )
+      .execute();
+
+    const totalPoints = tokenData.reduce((sum, txn) => sum + txn.amount, 0);
+
+    // Calculate user's new level
+    const newLevel = calculateUserLevel(totalWaste, reportCount, totalPoints);
+
+    // Update the user's level in the database if changed
+    await db
+      .update(Users)
+      .set({ level: newLevel }) // Ensure 'level' is now valid
+      .where(eq(Users.id, userId))
+      .execute();
+  } catch (error) {
+    console.error(`Error updating level for user ${userId}:`, error);
+    throw error;
+  }
+};

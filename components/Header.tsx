@@ -73,7 +73,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
       if (web3auth) return; // Prevent multiple initializations
 
       try {
-        console.log("🟢 Initializing Web3Auth...");
         const web3authInstance = new Web3Auth({
           clientId: clientId!,
           web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
@@ -92,7 +91,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
         }
 
         setLoading(false);
-        console.log("✅ Web3Auth Ready!");
       } catch (error) {
         console.error("❌ Web3Auth initialization failed:", error);
         setLoading(false);
@@ -106,9 +104,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
     const registerUser = async () => {
       if (userInfo && userInfo.email) {
         try {
-          console.log("🔄 Creating user in DB...", userInfo);
           await createUser(userInfo.email, userInfo.name || "Anonymous User");
-          console.log("✅ User successfully created in DB!");
         } catch (error) {
           console.error("❌ Error creating user in DB:", error);
         }
@@ -175,7 +171,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
     }
 
     try {
-      console.log("🔄 Attempting login...");
       const web3authProvider = await web3auth.connect();
 
       if (!web3authProvider) {
@@ -183,14 +178,12 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
         return;
       }
 
-      console.log("✅ Logged in successfully!");
       setProvider(web3authProvider);
       setLoggedIn(true);
 
       const user = await web3auth.getUserInfo();
 
       if (user && user.email) {
-        console.log("👤 User Info:", user);
         setUserInfo(user);
 
         // ✅ Store user email safely after ensuring it's available
@@ -205,7 +198,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
   const logout = async () => {
     if (!web3auth) {
-      console.log("web3auth not initialized yet");
       return;
     }
     try {

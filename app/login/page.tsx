@@ -54,9 +54,7 @@ export default function LoginPage() {
           privateKeyProvider,
         });
 
-        console.log("Initializing Web3Auth...");
         await web3authInstance.initModal();
-        console.log("Web3Auth initialized successfully");
 
         setWeb3Auth(web3authInstance);
 
@@ -79,9 +77,7 @@ export default function LoginPage() {
     const registerUser = async () => {
       if (userInfo && userInfo.email) {
         try {
-          console.log("🔄 Creating user in DB...", userInfo);
           await createUser(userInfo.email, userInfo.name || "Anonymous User");
-          console.log("✅ User successfully created in DB!");
         } catch (error) {
           console.error("❌ Error creating user in DB:", error);
         }
@@ -93,19 +89,15 @@ export default function LoginPage() {
 
   const login = async () => {
     if (!web3auth) {
-      console.log("Web3Auth is not ready yet.");
       return;
     }
 
     try {
-      console.log("Logging in...");
       await web3auth.connect();
-      console.log("User logged in successfully");
 
       const user = await web3auth.getUserInfo();
 
       if (user && user.email) {
-        console.log("👤 User Info:", user);
         setUserInfo(user);
 
         // ✅ Store user email safely after ensuring it's available

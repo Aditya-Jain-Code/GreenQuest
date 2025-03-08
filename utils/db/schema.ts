@@ -15,6 +15,7 @@ export const Users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  level: integer("level").notNull().default(1),
 });
 
 // Reports table

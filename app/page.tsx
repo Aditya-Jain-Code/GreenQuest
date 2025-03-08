@@ -22,12 +22,12 @@ const poppins = Poppins({
 
 function AnimatedGlobe() {
   return (
-    <div className="relative w-32 h-32 mx-auto mb-8">
+    <div className="relative w-40 h-40 mx-auto mb-12">
       <div className="absolute inset-0 rounded-full bg-green-500 opacity-20 animate-pulse"></div>
-      <div className="absolute inset-2 rounded-full bg-green-400 opacity-40 animate-ping"></div>
-      <div className="absolute inset-4 rounded-full bg-green-300 opacity-60 animate-spin"></div>
-      <div className="absolute inset-6 rounded-full bg-green-200 opacity-80 animate-bounce"></div>
-      <Leaf className="absolute inset-0 m-auto h-16 w-16 text-green-600 animate-pulse" />
+      <div className="absolute inset-1 rounded-full bg-green-400 opacity-40 animate-ping"></div>
+      <div className="absolute inset-3 rounded-full bg-green-300 opacity-60 animate-spin"></div>
+      <div className="absolute inset-5 rounded-full bg-green-200 opacity-80 animate-bounce"></div>
+      <Leaf className="absolute inset-0 m-auto h-20 w-20 text-green-600 animate-pulse" />
     </div>
   );
 }
@@ -81,7 +81,7 @@ export default function Home() {
                   0
                 )
               : 0,
-          co2Offset: Math.round(wasteCollected * 0.5 * 10) / 10, // 1kg waste = 0.5kg CO2 offset
+          co2Offset: Math.round(wasteCollected * 0.5 * 10) / 10,
         });
       } catch (error) {
         console.error(error);
@@ -93,15 +93,12 @@ export default function Home() {
   }, []);
 
   const handleButtonClick = () => {
-    if (loggedIn) {
-      router.push("/report");
-    } else {
-      router.push("/login");
-    }
+    router.push(loggedIn ? "/report" : "/login");
   };
 
   return (
     <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
+      {/* Hero Section */}
       <section className="text-center mb-20">
         <AnimatedGlobe />
         <h1 className="text-6xl font-bold mb-6 text-gray-800 tracking-tight">
@@ -114,56 +111,70 @@ export default function Home() {
         <ActionButton
           onClick={handleButtonClick}
           label={loggedIn ? "Report Waste" : "Get Started"}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-8 rounded-full transition-transform transform hover:scale-105"
         />
       </section>
 
+      {/* Feature Section */}
       <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-10 mb-20">
         <FeatureCard
           icon={Leaf}
           title="Eco-Friendly"
           description="Contribute to a cleaner environment."
+          className="hover:scale-105 transition-transform"
         />
         <FeatureCard
           icon={Coins}
           title="Earn Rewards"
           description="Get tokens for your contributions."
+          className="hover:scale-105 transition-transform"
         />
         <FeatureCard
           icon={Users}
           title="Community-Driven"
           description="Be part of a growing community."
+          className="hover:scale-105 transition-transform"
         />
       </section>
 
-      <section className="bg-white p-10 rounded-3xl shadow-lg mb-20">
+      {/* Impact Section */}
+      <section className="bg-gradient-to-b from-white to-green-50 p-10 rounded-3xl shadow-xl mb-20">
         <h2 className="text-4xl font-bold mb-12 text-center text-gray-800">
           Our Impact
         </h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          <ImpactCard
-            title="Waste Collected (kg)"
-            value={impactData.wasteCollected}
-            icon={Recycle}
-            loading={loading}
-          />
-          <ImpactCard
-            title="Reports Submitted"
-            value={impactData.reportsSubmitted}
-            icon={MapPin}
-            loading={loading}
-          />
-          <ImpactCard
-            title="Tokens Earned"
-            value={impactData.tokensEarned}
-            icon={Coins}
-            loading={loading}
-          />
-          <ImpactCard
-            title="CO₂ Offset (kg)"
-            value={impactData.co2Offset}
-            icon={Leaf}
-            loading={loading}
-          />
+        <div className="grid md:grid-cols-4 gap-8">
+          {loading ? (
+            <p className="text-center col-span-4 text-gray-500">
+              Loading impact data...
+            </p>
+          ) : (
+            <>
+              <ImpactCard
+                title="Waste Collected (kg)"
+                value={impactData.wasteCollected}
+                icon={Recycle}
+                className="animate-fade-in"
+              />
+              <ImpactCard
+                title="Reports Submitted"
+                value={impactData.reportsSubmitted}
+                icon={MapPin}
+                className="animate-fade-in"
+              />
+              <ImpactCard
+                title="Tokens Earned"
+                value={impactData.tokensEarned}
+                icon={Coins}
+                className="animate-fade-in"
+              />
+              <ImpactCard
+                title="CO₂ Offset (kg)"
+                value={impactData.co2Offset}
+                icon={Leaf}
+                className="animate-fade-in"
+              />
+            </>
+          )}
         </div>
       </section>
     </div>

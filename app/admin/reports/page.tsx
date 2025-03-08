@@ -12,6 +12,7 @@ import {
   saveReward,
   createTransaction,
   createNotification,
+  updateUserLevel,
 } from "@/utils/db/actions";
 import {
   Dialog,
@@ -46,14 +47,12 @@ export default function AdminReportsPage() {
 
   // Open Image Dialog
   const viewImage = (imageUrl: string) => {
-    console.log("Viewing Image:", imageUrl);
     setSelectedImage(imageUrl);
     setIsImageDialogOpen(true);
   };
 
   // Open Delete Confirmation Dialog
   const confirmDelete = (reportId: number) => {
-    console.log("Delete Report:", reportId);
     setDeleteReportId(reportId);
     setIsDeleteDialogOpen(true);
   };
@@ -106,6 +105,8 @@ export default function AdminReportsPage() {
             rewardName,
             rewardDescription
           );
+
+          await updateUserLevel(report.userId);
 
           toast.success("User rewarded and notified successfully!");
         } catch (error) {
