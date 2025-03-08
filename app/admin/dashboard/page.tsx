@@ -38,21 +38,21 @@ export default function Dashboard() {
     const userEmail = localStorage.getItem("userEmail");
     if (!userEmail) {
       toast.error("Access denied! Please log in.");
-      router.push("/admin/login"); // Redirect to login page
+      router.push("/admin/login");
     } else {
-      setIsLoading(false); // Allow page to load if logged in
+      setIsLoading(false);
     }
   }, []);
 
   // Fetch Dashboard Data
   useEffect(() => {
-    if (isLoading) return; // Prevent fetching data before authentication check
+    if (isLoading) return;
 
     async function fetchDashboardData() {
       setLoading(true);
       try {
         const [reports, rewards, tasks] = await Promise.allSettled([
-          getRecentReports(5), // Fetch the 5 most recent reports
+          getRecentReports(5),
           getAllRewards(),
           getWasteCollectionTasks(100),
         ]);
@@ -99,17 +99,23 @@ export default function Dashboard() {
   const navigateTo = (path) => router.push(path);
 
   if (isLoading) {
-    return <div className="text-center text-lg mt-20">Checking access...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen text-lg">
+        Checking access...
+      </div>
+    );
   }
 
   return (
-    <div className={`container mx-auto px-4 py-8 ${poppins.className}`}>
+    <div className={`container mx-auto px-6 py-12 ${poppins.className}`}>
       <Toaster />
 
-      <h1 className="text-4xl font-bold mb-8 text-gray-800">Admin Dashboard</h1>
+      <h1 className="text-5xl font-extrabold mb-12 text-gray-800 text-center">
+        🌟 Admin Dashboard
+      </h1>
 
       {/* Impact Summary Section */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
         <ImpactCard
           title="Waste Collected (kg)"
           value={impactData.wasteCollected}
@@ -137,26 +143,38 @@ export default function Dashboard() {
       </section>
 
       {/* Recent Reports Section */}
-      <section className="bg-white p-8 rounded-xl shadow-lg mb-12">
-        <h2 className="text-3xl font-semibold mb-6 text-gray-800">
-          Recent Reports
+      <section className="bg-white p-8 rounded-2xl shadow-xl mb-16">
+        <h2 className="text-4xl font-semibold mb-8 text-gray-800">
+          📊 Recent Reports
         </h2>
         {loading ? (
           <p>Loading recent reports...</p>
         ) : recentReports.length === 0 ? (
           <p>No recent reports available.</p>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-6">
             {recentReports.map((report) => (
               <li
                 key={report.id}
-                className="p-4 border rounded-lg flex justify-between items-center"
+                className="p-6 border rounded-xl flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition"
               >
                 <div>
-                  <p className="text-lg font-medium">{report.location}</p>
-                  <p className="text-sm text-gray-500">{report.description}</p>
+                  <p className="text-xl font-medium text-gray-700">
+                    {report.location}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {report.description}
+                  </p>
                 </div>
-                <span className="text-green-600 font-semibold">
+                <span
+                  className={`text-lg font-semibold ${
+                    report.status === "completed"
+                      ? "text-green-600"
+                      : report.status === "pending"
+                      ? "text-yellow-500"
+                      : "text-blue-500"
+                  }`}
+                >
                   {report.status}
                 </span>
               </li>
@@ -166,18 +184,18 @@ export default function Dashboard() {
       </section>
 
       {/* Quick Actions Section */}
-      <section className="flex flex-wrap gap-6">
+      <section className="flex flex-wrap justify-center gap-8">
         <ActionButton
           onClick={() => navigateTo("/admin/reports")}
-          label="Manage Reports"
+          label="📋 Manage Reports"
         />
         <ActionButton
           onClick={() => navigateTo("/admin/users")}
-          label="View Users"
+          label="👤 View Users"
         />
         <ActionButton
           onClick={() => navigateTo("/admin/rewards")}
-          label="Manage Rewards"
+          label="🎁 Manage Rewards"
         />
       </section>
     </div>

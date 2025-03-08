@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -24,45 +24,62 @@ export default function RootLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminName, setAdminName] = useState<string>("Admin");
+
   const pathname = usePathname();
+  const router = useRouter();
 
   // Check if the current page is in the /admin route
   const isAdminPage = pathname.startsWith("/admin");
 
   useEffect(() => {
-    const fetchTotalEarnings = async () => {
+    const fetchAdminData = async () => {
       try {
         const userEmail = localStorage.getItem("userEmail");
         if (userEmail) {
           const user = await getUserByEmail(userEmail);
-
           if (user) {
-            const rewards = await getAvailableRewards(user.id);
+            setIsAdminLoggedIn(true);
+            setAdminName(user.name || "Admin");
 
-            // Ensure rewards is an array and calculate the total earnings
+            // Fetch and calculate total earnings
+            const rewards = await getAvailableRewards(user.id);
             const totalEarnings = Array.isArray(rewards)
               ? rewards.reduce((sum, reward) => sum + (reward.cost || 0), 0)
               : 0;
 
             setTotalEarnings(totalEarnings);
           }
+        } else if (isAdminPage) {
+          router.push("/admin/login");
         }
       } catch (error) {
-        console.error("Error fetching total earnings:", error);
+        console.error("Error fetching admin data:", error);
+        if (isAdminPage) router.push("/admin/login");
       }
     };
 
-    fetchTotalEarnings();
-  }, []);
+    fetchAdminData();
+  }, [pathname, isAdminPage, router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("userEmail");
+    setIsAdminLoggedIn(false);
+    router.push("/admin/login");
+  };
 
   return (
     <html lang="en">
-      {/* Apply Poppins font and white background */}
       <body className={`${poppins.className} bg-white text-gray-800`}>
         <div className="min-h-screen flex flex-col">
           {/* Dynamic Header: Admin vs. Regular */}
           {isAdminPage ? (
-            <AdminHeader />
+            <AdminHeader
+              isAdminLoggedIn={isAdminLoggedIn}
+              onLogout={handleLogout}
+              adminName={adminName}
+            />
           ) : (
             <Header
               onMenuClick={() => setSidebarOpen(!sidebarOpen)}
