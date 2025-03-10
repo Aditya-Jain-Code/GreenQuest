@@ -1,7 +1,6 @@
-// @ts-nocheck
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Recycle, Users, Coins, MapPin, TreesIcon } from "lucide-react";
 import ImpactCard from "@/components/ImpactCard";
@@ -20,6 +19,20 @@ const poppins = Poppins({
   display: "swap",
 });
 
+// Define the Report type
+interface Report {
+  id: number;
+  userId: number;
+  location: string;
+  wasteType: string;
+  amount: string;
+  imageUrl: string | null;
+  verificationResult: unknown;
+  status: string;
+  createdAt: Date;
+  collectorId: number | null;
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -30,19 +43,24 @@ export default function Dashboard() {
     co2Offset: 0,
   });
 
-  const [recentReports, setRecentReports] = useState([]);
+  // Initialize recentReports with the Report type
+  const [recentReports, setRecentReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Use a ref to track if the toast has been shown
+  const toastShown = useRef(false);
 
   // Check if Admin is Logged In
   useEffect(() => {
     const userEmail = localStorage.getItem("userEmail");
-    if (!userEmail) {
+    if (!userEmail && !toastShown.current) {
       toast.error("Access denied! Please log in.");
+      toastShown.current = true; // Mark the toast as shown
       router.push("/admin/login");
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   // Fetch Dashboard Data
   useEffect(() => {
@@ -82,7 +100,7 @@ export default function Dashboard() {
         });
 
         if (reports.status === "fulfilled") {
-          setRecentReports(reports.value);
+          setRecentReports(reports.value); // Now this is type-safe
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -96,7 +114,7 @@ export default function Dashboard() {
   }, [isLoading]);
 
   // Navigate to specific sections
-  const navigateTo = (path) => router.push(path);
+  const navigateTo = (path: string) => router.push(path);
 
   if (isLoading) {
     return (
@@ -163,7 +181,7 @@ export default function Dashboard() {
                     {report.location}
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    {report.description}
+                    {report.wasteType} - {report.amount}
                   </p>
                 </div>
                 <span
