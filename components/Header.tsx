@@ -72,7 +72,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
   useEffect(() => {
     const initializeWeb3Auth = async () => {
-      if (web3auth) return; // Prevent multiple initializations
+      if (web3auth) return;
 
       try {
         const web3authInstance = new Web3Auth({
@@ -82,7 +82,7 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
         });
 
         setWeb3Auth(web3authInstance);
-        await web3authInstance.initModal(); // Initialize Web3Auth modal
+        await web3authInstance.initModal();
 
         setProvider(web3authInstance.provider);
 
@@ -129,7 +129,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
     fetchNotifications();
 
-    // Set up periodic checking for new notifications
     const notificationInterval = setInterval(fetchNotifications, 30000); // Check every 30 seconds
 
     return () => clearInterval(notificationInterval);
@@ -148,7 +147,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
     fetchUserBalance();
 
-    // Add an event listener for balance updates
     const handleBalanceUpdate = (event: CustomEvent) => {
       setBalance(event.detail);
     };
@@ -188,7 +186,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
       if (user && user.email) {
         setUserInfo(user);
 
-        // ✅ Store user email safely after ensuring it's available
         localStorage.setItem("userEmail", user.email);
       } else {
         console.error("❌ User email is missing after login.");
@@ -225,7 +222,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
           await createUser(user.email, user.name || "Anonymous User");
         } catch (error) {
           console.error("Error creating user:", error);
-          // Handle the error appropriately, maybe show a message to the user
         }
       }
     }
@@ -345,13 +341,12 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
                   {userInfo ? userInfo.name : "Fetch User Info"}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/settings">Profile</Link>
+                  <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={logout}>
-                  Sign Out
-                </DropdownMenuItem>{" "}
-                {/* Updated */}
+                <DropdownMenuItem>
+                  <Link href="/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout}>Sign Out</DropdownMenuItem>{" "}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

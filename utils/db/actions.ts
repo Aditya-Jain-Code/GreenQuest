@@ -3,11 +3,12 @@ import {
   Users,
   Reports,
   Rewards,
-  CollectedWastes,
   Notifications,
   Transactions,
+  Badges,
+  UserBadges,
 } from "./schema";
-import { eq, sql, and, desc } from "drizzle-orm";
+import { eq, sql, and, desc, isNotNull } from "drizzle-orm";
 
 export async function createUser(email: string, name: string) {
   try {
@@ -329,6 +330,7 @@ export async function createReport(
     const pointsEarned = 10;
     await updateRewardPoints(userId, pointsEarned);
     await updateUserLevel(userId);
+    await awardUserBadges(userId);
 
     // Create a transaction for the earned points
     await createTransaction(
@@ -413,28 +415,6 @@ export async function saveReward(
   }
 }
 
-export async function saveCollectedWaste(
-  reportId: number,
-  collectorId: number
-) {
-  try {
-    const [collectedWaste] = await db
-      .insert(CollectedWastes)
-      .values({
-        reportId,
-        collectorId,
-        collectionDate: new Date(),
-        status: "verified",
-      })
-      .returning()
-      .execute();
-    return collectedWaste;
-  } catch (error) {
-    console.error("Error saving collected waste:", error);
-    throw error;
-  }
-}
-
 export async function getOrCreateReward(userId: number) {
   try {
     let [reward] = await db
@@ -488,6 +468,7 @@ export async function redeemReward(userId: number, rewardId: number) {
       );
 
       await updateUserLevel(userId);
+      await awardUserBadges(userId);
 
       return updatedReward;
     } else {
@@ -763,4 +744,262 @@ export const updateUserLevel = async (userId: number) => {
     console.error(`Error updating level for user ${userId}:`, error);
     throw error;
   }
+};
+
+export const getUserIdByEmail = async (userEmail: string) => {
+  const user = await db
+    .select({ id: Users.id })
+    .from(Users)
+    .where(eq(Users.email, userEmail))
+    .limit(1)
+    .execute();
+
+  return user[0]?.id || null;
+};
+
+interface UserProgress {
+  wasteCollected: string;
+  reportsSubmitted: number;
+  rewardsRedeemed: number;
+  co2Offset: number;
+  pointsEarned: number;
+  userLevel: number;
+}
+
+interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  level: number;
+}
+
+export const getUserProfile = async (userId: number): Promise<UserProfile> => {
+  const user = await db
+    .select({
+      id: Users.id,
+      name: Users.name,
+      email: Users.email,
+      level: Users.level,
+    })
+    .from(Users)
+    .where(eq(Users.id, userId))
+    .execute();
+
+  if (!user[0]) {
+    throw new Error("User not found"); // Or return a default object with an id
+  }
+
+  return user[0];
+};
+
+export const getUserProgress = async (
+  userId: number
+): Promise<UserProgress> => {
+  // Fetch completed reports and their waste amounts
+  const completedReports = await db
+    .select({ amount: Reports.amount })
+    .from(Reports)
+    .where(and(eq(Reports.userId, userId), eq(Reports.status, "completed")))
+    .execute();
+
+  // Calculate total waste collected (in kg)
+  const totalWaste = completedReports.reduce(
+    (sum, report) => sum + (parseFloat(report.amount) || 0),
+    0
+  );
+
+  // Fetch redeemed rewards
+  const redeemedRewards = await db
+    .select()
+    .from(Rewards)
+    .where(and(eq(Rewards.userId, userId), eq(Rewards.isAvailable, false)))
+    .execute();
+
+  // Fetch total points earned
+  const earnedPoints = await db
+    .select({ amount: Transactions.amount })
+    .from(Transactions)
+    .where(
+      and(
+        eq(Transactions.userId, userId),
+        eq(Transactions.type, "earned_collect")
+      )
+    )
+    .execute();
+
+  const totalPointsEarned = earnedPoints.reduce(
+    (sum, txn) => sum + txn.amount,
+    0
+  );
+
+  // Fetch user level (using limit ensures one query execution)
+  const userLevelData = await db
+    .select({ level: Users.level })
+    .from(Users)
+    .where(eq(Users.id, userId))
+    .limit(1)
+    .execute();
+
+  // Calculate CO₂ offset (assuming 1 kg of waste = 0.5 kg CO₂ reduction)
+  const co2Offset = totalWaste * 0.5;
+
+  return {
+    wasteCollected: `${totalWaste} kg`,
+    reportsSubmitted: completedReports.length,
+    rewardsRedeemed: redeemedRewards.length,
+    co2Offset,
+    pointsEarned: totalPointsEarned,
+    userLevel: userLevelData[0]?.level || 1,
+  };
+};
+
+// Define the type for badge criteria
+type BadgeCriteria = {
+  type:
+    | "first_waste_collection"
+    | "waste_collection"
+    | "reports_submitted"
+    | "rewards_redeemed"
+    | "co2_offset";
+  amount: number;
+};
+
+// Helper function to validate badge criteria
+const isBadgeCriteria = (criteria: any): criteria is BadgeCriteria => {
+  return (
+    criteria &&
+    typeof criteria === "object" &&
+    [
+      "first_waste_collection",
+      "waste_collection",
+      "reports_submitted",
+      "rewards_redeemed",
+      "co2_offset",
+    ].includes(criteria.type) &&
+    typeof criteria.amount === "number"
+  );
+};
+
+// Ensure 'userId' has a number type
+export const awardUserBadges = async (userId: number): Promise<void> => {
+  try {
+    // Fetch the user's progress
+    const userProgress = await getUserProgress(userId);
+
+    // Helper function to extract numeric value from 'wasteCollected' (e.g., "100 kg" → 100)
+    const extractNumericValue = (value: string): number => {
+      const num = parseFloat(value);
+      return isNaN(num) ? 0 : num; // Handle invalid values gracefully
+    };
+
+    // Fetch all available badges and user's current badges
+    const [allBadges, userBadges] = await Promise.all([
+      db.select().from(Badges).execute(),
+      db
+        .select({ badgeId: UserBadges.badgeId })
+        .from(UserBadges)
+        .where(eq(UserBadges.userId, userId))
+        .execute(),
+    ]);
+
+    // Get badge IDs the user already has
+    const userBadgeIds = new Set(userBadges.map((badge) => badge.badgeId));
+
+    // Identify badges to be awarded
+    const newBadges = allBadges.filter((badge) => {
+      if (userBadgeIds.has(badge.id)) {
+        console.log(`User ${userId} already has badge ${badge.id}. Skipping.`);
+        return false; // Skip if user already has the badge
+      }
+
+      try {
+        // Parse badge criteria
+        const criteria = badge.criteria;
+
+        // Validate criteria
+        if (!isBadgeCriteria(criteria)) {
+          console.warn(
+            `Invalid criteria for badge ${badge.id}:`,
+            JSON.stringify(criteria)
+          );
+          return false;
+        }
+
+        // Check if the user meets the criteria
+        switch (criteria.type) {
+          case "first_waste_collection":
+            return userProgress.wasteCollected !== "0 kg"; // Award if user has collected any waste
+          case "waste_collection":
+            const wasteAmount = extractNumericValue(
+              userProgress.wasteCollected
+            );
+            return wasteAmount >= criteria.amount;
+          case "reports_submitted":
+            return userProgress.reportsSubmitted >= criteria.amount;
+          case "rewards_redeemed":
+            return userProgress.rewardsRedeemed >= criteria.amount;
+          case "co2_offset":
+            return userProgress.co2Offset >= criteria.amount;
+          default:
+            console.warn(`Unknown badge criteria type for badge ${badge.id}.`);
+            return false; // Ignore unknown types
+        }
+      } catch (error) {
+        console.error(`Invalid badge criteria for badge ${badge.id}:`, error);
+        return false;
+      }
+    });
+
+    // Award new badges
+    if (newBadges.length > 0) {
+      await db.insert(UserBadges).values(
+        newBadges.map((badge) => ({
+          userId,
+          badgeId: badge.id,
+        }))
+      );
+      console.log(`Awarded ${newBadges.length} new badges to user ${userId}`);
+    } else {
+      console.log(`No new badges to award for user ${userId}`);
+    }
+  } catch (error) {
+    console.error(`Error awarding badges for user ${userId}:`, error);
+    throw error; // Re-throw the error for further handling
+  }
+};
+
+export const getUserBadges = async (userId: number) => {
+  return await db
+    .select({
+      id: Badges.id,
+      name: Badges.name,
+      description: Badges.description,
+      category: Badges.category,
+      awardedAt: UserBadges.awardedAt,
+    })
+    .from(UserBadges)
+    .innerJoin(Badges, eq(UserBadges.badgeId, Badges.id))
+    .where(eq(UserBadges.userId, userId))
+    .orderBy(UserBadges.awardedAt);
+};
+
+export const getAllBadgesWithUserStatus = async (userId: number) => {
+  return await db
+    .select({
+      id: Badges.id,
+      name: Badges.name,
+      description: Badges.description,
+      category: Badges.category,
+      awardedAt: UserBadges.awardedAt,
+      earned:
+        sql<boolean>`CASE WHEN ${UserBadges.badgeId} IS NOT NULL THEN TRUE ELSE FALSE END`.as(
+          "earned"
+        ),
+    })
+    .from(Badges)
+    .leftJoin(
+      UserBadges,
+      and(eq(UserBadges.badgeId, Badges.id), eq(UserBadges.userId, userId))
+    )
+    .orderBy(Badges.id);
 };

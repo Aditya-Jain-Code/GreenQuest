@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // Users table
@@ -50,19 +51,6 @@ export const Rewards = pgTable("rewards", {
   collectionInfo: text("collection_info").notNull(),
 });
 
-// CollectedWastes table
-export const CollectedWastes = pgTable("collected_wastes", {
-  id: serial("id").primaryKey(),
-  reportId: integer("report_id")
-    .references(() => Reports.id)
-    .notNull(),
-  collectorId: integer("collector_id")
-    .references(() => Users.id)
-    .notNull(),
-  collectionDate: timestamp("collection_date").notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("collected"),
-});
-
 // Notifications table
 export const Notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -86,3 +74,33 @@ export const Transactions = pgTable("transactions", {
   description: text("description").notNull(),
   date: timestamp("date").defaultNow().notNull(),
 });
+
+// Badges table
+export const Badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  category: varchar("category", { length: 100 }).notNull(), // e.g., 'Waste Collection'
+  description: text("description").notNull(),
+  criteria: jsonb("criteria").notNull(), // Stores badge conditions as JSON
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// User Badges table
+export const UserBadges = pgTable(
+  "user_badges",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => Users.id),
+    badgeId: integer("badge_id")
+      .notNull()
+      .references(() => Badges.id),
+    awardedAt: timestamp("awarded_at").defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      userBadgeUnique: unique().on(table.userId, table.badgeId), // Ensure a badge is awarded once
+    };
+  }
+);
