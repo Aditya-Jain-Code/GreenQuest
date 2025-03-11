@@ -223,6 +223,70 @@ export default function ReportPage() {
     }
   };
 
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log("Latitude:", latitude, "Longitude:", longitude);
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                "User-Agent": "GreenQuest/1.0 (adityajai2104@gmail.com)",
+              },
+            }
+          );
+          const data = await response.json();
+          console.log("Nominatim Response:", data);
+
+          if (data.address) {
+            // Extract address components
+            const houseNumber = data.address.house_number || "";
+            const road = data.address.road || "";
+            const locality =
+              data.address.neighbourhood || data.address.suburb || "";
+            const city =
+              data.address.city ||
+              data.address.town ||
+              data.address.village ||
+              "";
+            const state = data.address.state || "";
+            const postalCode = data.address.postcode || "";
+
+            // Construct the address in the desired format
+            const address = `${houseNumber ? houseNumber + ", " : ""}${
+              road ? road + ", " : ""
+            }${
+              locality ? locality + ", " : ""
+            }${city}, ${state} ${postalCode}`.trim();
+
+            setNewReport((prev) => ({
+              ...prev,
+              location: address,
+            }));
+          } else {
+            toast.error("No address found for the given location.");
+          }
+        } catch (error) {
+          console.error("Error fetching address:", error);
+          toast.error("Failed to fetch address. Please try again.");
+        }
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast.error("Failed to get your location. Please try again.");
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // High accuracy settings
+    );
+  };
+
   useEffect(() => {
     const checkUser = async () => {
       const email = localStorage.getItem("userEmail");
@@ -366,11 +430,24 @@ export default function ReportPage() {
             >
               Location
             </label>
-            {isLoaded ? (
-              <StandaloneSearchBox
-                onLoad={onLoad}
-                onPlacesChanged={onPlacesChanged}
-              >
+            <div className="relative">
+              {isLoaded ? (
+                <StandaloneSearchBox
+                  onLoad={onLoad}
+                  onPlacesChanged={onPlacesChanged}
+                >
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={newReport.location}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                    placeholder="Enter waste location"
+                  />
+                </StandaloneSearchBox>
+              ) : (
                 <input
                   type="text"
                   id="location"
@@ -381,19 +458,15 @@ export default function ReportPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
                   placeholder="Enter waste location"
                 />
-              </StandaloneSearchBox>
-            ) : (
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={newReport.location}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
-                placeholder="Enter waste location"
-              />
-            )}
+              )}
+              <button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-green-600"
+              >
+                <MapPin className="h-5 w-5" />
+              </button>
+            </div>
           </div>
           <div>
             <label

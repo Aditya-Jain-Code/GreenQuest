@@ -8,12 +8,12 @@ import {
   Medal,
   Settings,
   Home,
-  User,
+  LayoutDashboard,
 } from "lucide-react";
 
 const sidebarItems = [
   { href: "/", icon: Home, label: "Home" },
-  { href: "/profile", icon: User, label: "Profile" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/report", icon: MapPin, label: "Report Waste" },
   { href: "/collect", icon: Trash, label: "Collect Waste" },
   { href: "/rewards", icon: Coins, label: "Rewards" },

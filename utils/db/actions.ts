@@ -982,24 +982,3 @@ export const getUserBadges = async (userId: number) => {
     .where(eq(UserBadges.userId, userId))
     .orderBy(UserBadges.awardedAt);
 };
-
-export const getAllBadgesWithUserStatus = async (userId: number) => {
-  return await db
-    .select({
-      id: Badges.id,
-      name: Badges.name,
-      description: Badges.description,
-      category: Badges.category,
-      awardedAt: UserBadges.awardedAt,
-      earned:
-        sql<boolean>`CASE WHEN ${UserBadges.badgeId} IS NOT NULL THEN TRUE ELSE FALSE END`.as(
-          "earned"
-        ),
-    })
-    .from(Badges)
-    .leftJoin(
-      UserBadges,
-      and(eq(UserBadges.badgeId, Badges.id), eq(UserBadges.userId, userId))
-    )
-    .orderBy(Badges.id);
-};
