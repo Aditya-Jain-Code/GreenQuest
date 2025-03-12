@@ -232,6 +232,7 @@ export default function ReportPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        const predefinedAddress = "6PW3+R98, Gurudwara Rd, Punjab 144411";
         console.log("Latitude:", latitude, "Longitude:", longitude);
 
         try {
@@ -269,7 +270,7 @@ export default function ReportPage() {
 
             setNewReport((prev) => ({
               ...prev,
-              location: address,
+              location: predefinedAddress,
             }));
           } else {
             toast.error("No address found for the given location.");

@@ -83,10 +83,6 @@ const ProfilePage = () => {
           getUserBadges(userId),
         ]);
 
-        console.log("Profile:", profile); // Log the profile object
-        console.log("Progress:", progress); // Log the progress object
-        console.log("Badges:", badges); // Log the badges array
-
         setUserProfile(profile); // Ensure this matches the UserProfile interface
         setUserProgress(progress);
         setUserBadges(badges);

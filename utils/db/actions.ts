@@ -8,7 +8,7 @@ import {
   Badges,
   UserBadges,
 } from "./schema";
-import { eq, sql, and, desc, isNotNull } from "drizzle-orm";
+import { eq, sql, and, desc, or } from "drizzle-orm";
 
 export async function createUser(email: string, name: string) {
   try {
@@ -328,7 +328,7 @@ export async function createReport(
 
     // Award 10 points for reporting waste
     const pointsEarned = 10;
-    await updateRewardPoints(userId, pointsEarned);
+    await getOrCreateReward(userId);
     await updateUserLevel(userId);
     await awardUserBadges(userId);
 
@@ -427,11 +427,12 @@ export async function getOrCreateReward(userId: number) {
         .insert(Rewards)
         .values({
           userId,
-          name: "Default Reward",
-          collectionInfo: "Default Collection Info",
-          points: 0,
+          name: "Report Submission Reward",
+          collectionInfo: "Points earned from waste report",
+          points: 10,
           level: 1,
           isAvailable: true,
+          description: "Points earned for submitting a waste report.",
         })
         .returning()
         .execute();
@@ -788,7 +789,6 @@ export const getUserProfile = async (userId: number): Promise<UserProfile> => {
   if (!user[0]) {
     throw new Error("User not found"); // Or return a default object with an id
   }
-
   return user[0];
 };
 
@@ -822,7 +822,10 @@ export const getUserProgress = async (
     .where(
       and(
         eq(Transactions.userId, userId),
-        eq(Transactions.type, "earned_collect")
+        or(
+          eq(Transactions.type, "earned_collect"),
+          eq(Transactions.type, "earned_report")
+        )
       )
     )
     .execute();
@@ -958,6 +961,11 @@ export const awardUserBadges = async (userId: number): Promise<void> => {
           badgeId: badge.id,
         }))
       );
+
+      // Notify the user about the awarded badges
+      const notificationMessage = `Congratulations! You have been awarded ${newBadges.length} new badges.`;
+      await createNotification(userId, notificationMessage, "badge_award");
+
       console.log(`Awarded ${newBadges.length} new badges to user ${userId}`);
     } else {
       console.log(`No new badges to award for user ${userId}`);
