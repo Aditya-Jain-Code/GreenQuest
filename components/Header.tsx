@@ -185,7 +185,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
 
       if (user && user.email) {
         setUserInfo(user);
-
         localStorage.setItem("userEmail", user.email);
       } else {
         console.error("❌ User email is missing after login.");
@@ -261,18 +260,6 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
             </div>
           </Link>
         </div>
-        {!isMobile && (
-          <div className="flex-1 max-w-xl mx-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
-          </div>
-        )}
         <div className="flex items-center">
           {isMobile && (
             <Button variant="ghost" size="icon" className="mr-2">

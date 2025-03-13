@@ -455,18 +455,11 @@ export async function redeemReward(userId: number, rewardId: number) {
         .set({
           points: 0,
           updatedAt: new Date(),
+          isAvailable: false,
         })
         .where(eq(Rewards.userId, userId))
         .returning()
         .execute();
-
-      // Create a transaction for this redemption
-      await createTransaction(
-        userId,
-        "redeemed",
-        userReward.points,
-        `Redeemed all points: ${userReward.points}`
-      );
 
       await updateUserLevel(userId);
       await awardUserBadges(userId);
@@ -493,18 +486,11 @@ export async function redeemReward(userId: number, rewardId: number) {
         .set({
           points: sql`${Rewards.points} - ${availableReward[0].points}`,
           updatedAt: new Date(),
+          isAvailable: false,
         })
         .where(eq(Rewards.userId, userId))
         .returning()
         .execute();
-
-      // Create a transaction for this redemption
-      await createTransaction(
-        userId,
-        "redeemed",
-        availableReward[0].points,
-        `Redeemed: ${availableReward[0].name}`
-      );
 
       await updateUserLevel(userId);
 
@@ -817,21 +803,13 @@ export const getUserProgress = async (
 
   // Fetch total points earned
   const earnedPoints = await db
-    .select({ amount: Transactions.amount })
-    .from(Transactions)
-    .where(
-      and(
-        eq(Transactions.userId, userId),
-        or(
-          eq(Transactions.type, "earned_collect"),
-          eq(Transactions.type, "earned_report")
-        )
-      )
-    )
+    .select({ points: Rewards.points })
+    .from(Rewards)
+    .where(and(eq(Rewards.userId, userId), eq(Rewards.isAvailable, true)))
     .execute();
 
   const totalPointsEarned = earnedPoints.reduce(
-    (sum, txn) => sum + txn.amount,
+    (sum, txn) => sum + txn.points,
     0
   );
 

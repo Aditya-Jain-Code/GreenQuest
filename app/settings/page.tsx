@@ -1,9 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, MapPin, Save, Camera, Undo2 } from "lucide-react";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Save,
+  Camera,
+  Undo2,
+  LogOut,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Web3Auth } from "@web3auth/modal";
+import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import { deleteUser, getUserIdByEmail } from "@/utils/db/actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type UserSettings = {
   profilePic: string;
@@ -26,7 +50,27 @@ export default function SettingsPage() {
     notifications: true,
   });
 
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+  const clientId = process.env.WEB3AUTH_CLIENT_ID;
+
+  const chainConfig = {
+    chainNamespace: CHAIN_NAMESPACES.EIP155,
+    chainId: "0xaa36a7",
+    rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+    displayName: "Ethereum Sepolia Testnet",
+    blockExplorerUrl: "https://sepolia.etherscan.io",
+    ticker: "ETH",
+    tickerName: "Ethereum",
+    logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+  };
+
+  const privateKeyProvider = new EthereumPrivateKeyProvider({
+    config: { chainConfig },
+  });
+
   const [savedSettings, setSavedSettings] = useState<UserSettings | null>(null);
+  const router = useRouter(); // For navigation
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -35,6 +79,13 @@ export default function SettingsPage() {
       const parsedSettings = JSON.parse(saved);
       setSettings(parsedSettings);
       setSavedSettings(parsedSettings); // Store a copy for reset functionality
+    }
+
+    const email = localStorage.getItem("userEmail");
+    setUserEmail(email);
+
+    if (email) {
+      getUserIdByEmail(email).then((id) => setUserId(id));
     }
   }, []);
 
@@ -68,6 +119,62 @@ export default function SettingsPage() {
     if (savedSettings) {
       setSettings(savedSettings);
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(savedSettings));
+    }
+  };
+
+  // Logout Functionality
+  const handleLogout = async () => {
+    try {
+      const web3auth = new Web3Auth({
+        clientId: clientId!,
+        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
+        privateKeyProvider,
+      });
+
+      // Initialize Web3Auth before checking connection
+      await web3auth.initModal();
+
+      if (!web3auth.connected) {
+        throw new Error("Wallet is not connected. Please log in first.");
+      }
+
+      await web3auth.logout(); // Logout the user
+      localStorage.removeItem(SETTINGS_KEY); // Clear settings from localStorage
+      localStorage.removeItem("userEmail"); // Clear userEmail from localStorage
+      router.push("/"); // Redirect to login page
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  // Delete Account Functionality
+  const handleDeleteAccount = async () => {
+    try {
+      if (!userId) throw new Error("User ID not found.");
+
+      const result = await deleteUser(Number(userId)); // Pass userId to deleteUser
+      if (!result.success) throw new Error(result.error);
+
+      const web3auth = new Web3Auth({
+        clientId: clientId!,
+        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
+        privateKeyProvider,
+      });
+
+      // Initialize Web3Auth before checking connection
+      await web3auth.initModal();
+
+      // Check if Web3Auth is connected
+      if (!web3auth.connected) {
+        throw new Error("Wallet is not connected. Please log in first.");
+      }
+
+      await web3auth.logout(); // Logout the user after deletion
+      localStorage.removeItem(SETTINGS_KEY); // Clear settings from localStorage
+      localStorage.removeItem("userEmail"); // Clear userId from localStorage
+      router.push("/"); // Redirect to login page
+    } catch (error) {
+      console.error("Account deletion failed:", error);
     }
   };
 
@@ -203,6 +310,66 @@ export default function SettingsPage() {
           <Save className="w-4 h-4 mr-2" />
           Save Changes
         </Button>
+      </div>
+
+      {/* Logout and Delete Account Buttons */}
+      <div className="mt-8 flex justify-between">
+        {/* Logout Dialog */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-red-500 hover:bg-red-600 text-white flex items-center">
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Are you sure you want to logout?</DialogTitle>
+              <DialogDescription>
+                This action will log you out of your account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline">Cancel</Button>
+              <Button
+                onClick={handleLogout}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Logout
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Account Dialog */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-red-800 hover:bg-red-900 text-white flex items-center">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Account
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Are you sure you want to delete your account?
+              </DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. All your data will be permanently
+                deleted.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline">Cancel</Button>
+              <Button
+                onClick={handleDeleteAccount}
+                className="bg-red-800 hover:bg-red-900"
+              >
+                Delete Account
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
