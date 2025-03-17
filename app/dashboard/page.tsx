@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaEdit, FaSave, FaUndo } from "react-icons/fa";
 import { Phone, MapPin, Camera } from "lucide-react";
 import UserProgressDashboard from "@/components/UserProgressDashboard";
@@ -13,7 +13,9 @@ import {
   getUserProfile,
   getUserProgress,
   getUserBadges,
+  updateUserLevel,
 } from "@/utils/db/actions";
+import toast from "react-hot-toast";
 
 interface UserProgress {
   wasteCollected: string;
@@ -61,29 +63,35 @@ const ProfilePage = () => {
   const [savedSettings, setSavedSettings] = useState<UserSettings | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
+  const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
       const userEmail = localStorage.getItem("userEmail");
       if (!userEmail) {
+        if (!hasCheckedAuth.current) {
+          toast.error("Please log in to view your profile.");
+          hasCheckedAuth.current = true; // Mark as checked
+        }
         router.push("/login");
         return;
       }
 
       try {
         const userId = await getUserIdByEmail(userEmail);
+        const bagdes = await getUserBadges(userId!);
         if (!userId) {
           router.push("/login");
           return;
         }
 
         const [profile, progress, badges] = await Promise.all([
-          getUserProfile(userId), // This now returns a UserProfile with id
+          getUserProfile(userId),
           getUserProgress(userId),
           getUserBadges(userId),
         ]);
 
-        setUserProfile(profile); // Ensure this matches the UserProfile interface
+        setUserProfile(profile);
         setUserProgress(progress);
         setUserBadges(badges);
 
@@ -95,7 +103,7 @@ const ProfilePage = () => {
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        setUserProfile(null); // Set userProfile to null if there's an error
+        setUserProfile(null);
       }
     };
 

@@ -35,19 +35,19 @@ export default function LeaderboardPage() {
         const fetchedRewards = await getAllRewards();
 
         // Aggregate rewards by user
-        const aggregatedRewards = fetchedRewards.reduce(
-          (acc: Reward[], reward: Reward) => {
-            const existing = acc.find((r) => r.userId === reward.userId);
-            if (existing) {
-              existing.points += reward.points;
-              existing.level = Math.max(existing.level, reward.level);
-            } else {
-              acc.push({ ...reward });
-            }
-            return acc;
-          },
-          []
-        );
+        const aggregatedRewardsMap = new Map<number, Reward>();
+
+        fetchedRewards.forEach((reward) => {
+          if (aggregatedRewardsMap.has(reward.userId)) {
+            const existing = aggregatedRewardsMap.get(reward.userId)!;
+            existing.points += reward.points;
+            existing.level = Math.max(existing.level, reward.level);
+          } else {
+            aggregatedRewardsMap.set(reward.userId, { ...reward });
+          }
+        });
+
+        const aggregatedRewards = Array.from(aggregatedRewardsMap.values());
 
         // Sort by points in descending order
         aggregatedRewards.sort((a, b) => b.points - a.points);
@@ -66,7 +66,7 @@ export default function LeaderboardPage() {
             router.push("/login");
           }
         } else if (!toastShown.current) {
-          toast.error("User not logged in. Please log in.");
+          toast.error("Log in to check your rank.");
           toastShown.current = true;
           router.push("/login");
         }

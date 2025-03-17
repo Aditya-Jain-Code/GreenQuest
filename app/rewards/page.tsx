@@ -80,7 +80,7 @@ export default function RewardsPage() {
             router.push("/login");
           }
         } else if (!toastShown.current) {
-          toast.error("User not logged in. Please log in.");
+          toast.error("Please log in to check rewards.");
           toastShown.current = true;
           router.push("/login");
         }

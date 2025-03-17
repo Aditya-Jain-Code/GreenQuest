@@ -62,7 +62,7 @@ export default function CollectPage() {
             router.push("/login");
           }
         } else if (!toastShown.current) {
-          toast.error("User not logged in. Please log in.");
+          toast.error("Please log in to view waste collection tasks.");
           toastShown.current = true;
           router.push("/login");
         }

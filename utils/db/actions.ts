@@ -8,7 +8,7 @@ import {
   Badges,
   UserBadges,
 } from "./schema";
-import { eq, sql, and, desc, or } from "drizzle-orm";
+import { eq, sql, and, desc } from "drizzle-orm";
 
 export async function createUser(email: string, name: string) {
   try {
@@ -328,7 +328,12 @@ export async function createReport(
 
     // Award 10 points for reporting waste
     const pointsEarned = 10;
-    await getOrCreateReward(userId);
+    await saveReward(
+      userId,
+      pointsEarned,
+      "Report Submission Reward",
+      "Points earned for submitting a waste report."
+    );
     await updateUserLevel(userId);
     await awardUserBadges(userId);
 
@@ -417,27 +422,44 @@ export async function saveReward(
 
 export async function getOrCreateReward(userId: number) {
   try {
-    let [reward] = await db
+    // Check if reward exists
+    const existingReward = await db
       .select()
       .from(Rewards)
       .where(eq(Rewards.userId, userId))
+      .limit(1) // Ensure only one record is fetched
       .execute();
-    if (!reward) {
-      [reward] = await db
-        .insert(Rewards)
-        .values({
-          userId,
-          name: "Report Submission Reward",
-          collectionInfo: "Points earned from waste report",
-          points: 10,
-          level: 1,
-          isAvailable: true,
-          description: "Points earned for submitting a waste report.",
-        })
-        .returning()
-        .execute();
+
+    if (existingReward.length > 0) {
+      return existingReward[0]; // Return the existing reward
     }
-    return reward;
+
+    // If no reward exists, insert a new one
+    const [newReward] = await db
+      .insert(Rewards)
+      .values({
+        userId,
+        name: "Report Submission Reward",
+        collectionInfo: "Points earned from waste report",
+        points: 10,
+        level: 1,
+        isAvailable: true,
+        description: "Points earned for submitting a waste report.",
+      })
+      .returning({
+        id: Rewards.id,
+        userId: Rewards.userId,
+        name: Rewards.name,
+        collectionInfo: Rewards.collectionInfo,
+        points: Rewards.points,
+        level: Rewards.level,
+        isAvailable: Rewards.isAvailable,
+        description: Rewards.description,
+        createdAt: Rewards.createdAt, // Include all necessary columns
+      })
+      .execute();
+
+    return newReward;
   } catch (error) {
     console.error("Error getting or creating reward:", error);
     return null;

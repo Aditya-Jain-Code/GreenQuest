@@ -1,10 +1,10 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { MapPin, Upload, CheckCircle, Loader } from "lucide-react";
+import { MapPin, Upload, CheckCircle, Loader, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import EXIF from "exif-js";
 import {
   StandaloneSearchBox,
   useJsApiLoader,
@@ -63,7 +63,7 @@ export default function ReportPage() {
 
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY!,
     libraries: libraries,
   });
 
@@ -112,13 +112,60 @@ export default function ReportPage() {
     });
   };
 
+  const extractMetadata = (file: File): Promise<Record<string, any>> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const exifData = EXIF.readFromBinaryFile(
+          e.target?.result as ArrayBuffer
+        );
+        resolve(exifData || {});
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const mockReverseImageSearch = async (file: File): Promise<boolean> => {
+    // Simulate an API call delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Mock logic: Randomly decide if the image is from the internet
+    const isFromInternet = Math.random() > 0.5; // 50% chance
+    return isFromInternet;
+  };
+
   const handleVerify = async () => {
     if (!file) return;
 
     setVerificationStatus("verifying");
 
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      // Step 1: Extract metadata
+      const metadata = await extractMetadata(file);
+      console.log("Image Metadata:", metadata);
+
+      // Check for missing or suspicious metadata
+      if (!metadata.Make || !metadata.Model) {
+        toast.error(
+          "This image lacks camera metadata and may not be original."
+        );
+        setVerificationStatus("failure");
+        return;
+      }
+
+      // Step 2: Perform reverse image search
+      const isFromInternet = await mockReverseImageSearch(file);
+      if (isFromInternet) {
+        toast.error(
+          "This image appears to be from the internet. Please upload an original photo."
+        );
+        setVerificationStatus("failure");
+        return;
+      }
+
+      // Step 3: Analyze the image using Gemini
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
       const base64Data = await readFileAsBase64(file);
@@ -182,7 +229,7 @@ export default function ReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (verificationStatus !== "success" || !user) {
-      toast.error("Please verify the waste before submitting or log in.");
+      toast.error("Please verify the waste before submitting.");
       return;
     }
 
@@ -294,7 +341,7 @@ export default function ReportPage() {
 
       if (!email) {
         if (!toastShown.current) {
-          toast.error("User not logged in. Please log in.");
+          toast.error("Log in to make a waste report.");
           toastShown.current = true;
         }
         router.push("/login");
@@ -418,6 +465,23 @@ export default function ReportPage() {
                     {(verificationResult.confidence * 100).toFixed(2)}%
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {verificationStatus === "failure" && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8 rounded-r-xl">
+            <div className="flex items-center">
+              <XCircle className="h-6 w-6 text-red-400 mr-3" />
+              <div>
+                <h3 className="text-lg font-medium text-red-800">
+                  Verification Failed
+                </h3>
+                <p className="mt-2 text-sm text-red-700">
+                  The image could not be verified. Please upload an original
+                  photo.
+                </p>
               </div>
             </div>
           </div>
