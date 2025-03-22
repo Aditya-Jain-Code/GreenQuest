@@ -1,9 +1,8 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -14,7 +13,6 @@ import {
   User,
   ChevronDown,
   LogIn,
-  LogOut,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,20 +25,19 @@ import { Web3Auth } from "@web3auth/modal";
 import { CHAIN_NAMESPACES, IProvider, WEB3AUTH_NETWORK } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { createUser, getUserByEmail } from "@/utils/db/actions/users";
 import {
-  createUser,
   getUnreadNotifications,
   markNotificationAsRead,
-  getUserByEmail,
-  getUserBalance,
-} from "@/utils/db/actions";
+} from "@/utils/db/actions/notifications";
+import { getUserBalance } from "@/utils/db/actions/transactions";
 
 const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
   chainId: "0xaa36a7",
-  rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+  rpcTarget: "https://sepolia.infura.io/v3/275e6ce11c374a4cae8ab243d2b898b4",
   displayName: "Ethereum Sepolia Testnet",
   blockExplorerUrl: "https://sepolia.etherscan.io",
   ticker: "ETH",
@@ -52,19 +49,27 @@ const privateKeyProvider = new EthereumPrivateKeyProvider({
   config: { chainConfig },
 });
 
-interface HeaderProps {
-  onMenuClick: () => void;
-  totalEarnings: number;
+// Define the Notification type
+interface Notification {
+  id: number;
+  userId: number;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: Date;
 }
 
-export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
+interface HeaderProps {
+  onMenuClick: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   const [web3auth, setWeb3Auth] = useState<Web3Auth | null>(null);
   const [provider, setProvider] = useState<IProvider | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const pathname = usePathname();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]); // Use the custom Notification type
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [balance, setBalance] = useState(0);
 
@@ -186,6 +191,13 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
       if (user && user.email) {
         setUserInfo(user);
         localStorage.setItem("userEmail", user.email);
+
+        // Redirect based on email
+        if (user.email === "adityaj2104x@gmail.com") {
+          router.push("/pickup"); // Redirect to pickup dashboard
+        } else {
+          router.push("/"); // Redirect to home for other users
+        }
       } else {
         console.error("❌ User email is missing after login.");
       }
@@ -212,6 +224,11 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
   };
 
   const getUserInfo = async () => {
+    if (!web3auth) {
+      console.error("🚨 Web3Auth is not initialized.");
+      return;
+    }
+
     if (web3auth.connected) {
       const user = await web3auth.getUserInfo();
       setUserInfo(user);

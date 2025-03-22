@@ -1,18 +1,17 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useEffect } from "react";
 import { Leaf, Recycle, Users, Coins, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
-  getRecentReports,
-  getAllRewards,
-  getWasteCollectionTasks,
-} from "@/utils/db/actions";
 import ImpactCard from "@/components/ImpactCard";
 import FeatureCard from "@/components/FeatureCard";
 import ActionButton from "@/components/ActionButton";
 import { Poppins } from "next/font/google";
+import {
+  getRecentReports,
+  getWasteCollectionTasks,
+} from "@/utils/db/actions/reports";
+import { getAllRewards } from "@/utils/db/actions/rewards";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],

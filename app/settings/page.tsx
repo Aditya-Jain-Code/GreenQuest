@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import { Web3Auth } from "@web3auth/modal";
 import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
-import { deleteUser, getUserIdByEmail } from "@/utils/db/actions";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +27,8 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "react-hot-toast";
+import { deleteUser, getUserIdByEmail } from "@/utils/db/actions/users";
 
 type UserSettings = {
   profilePic: string;
@@ -119,7 +120,16 @@ export default function SettingsPage() {
     if (savedSettings) {
       setSettings(savedSettings);
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(savedSettings));
+      toast.success("Changes undone successfully!");
+    } else {
+      toast.error("No saved settings to revert to.");
     }
+  };
+
+  const handleSaveChanges = () => {
+    // Save changes logic here (if any additional logic is needed)
+    setSavedSettings(settings); // Update saved settings
+    toast.success("Changes saved successfully!");
   };
 
   // Logout Functionality
@@ -306,7 +316,10 @@ export default function SettingsPage() {
           <Undo2 className="w-4 h-4 mr-2" />
           Undo Changes
         </Button>
-        <Button className="bg-green-500 hover:bg-green-600 text-white flex items-center">
+        <Button
+          onClick={handleSaveChanges}
+          className="bg-green-500 hover:bg-green-600 text-white flex items-center"
+        >
           <Save className="w-4 h-4 mr-2" />
           Save Changes
         </Button>

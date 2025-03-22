@@ -1,241 +1,235 @@
-// @ts-nocheck
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { toast } from "react-hot-toast";
-import { Eye, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
-  getRecentReports,
+  getAllReports,
   deleteReport,
   updateReportStatus,
-  saveReward,
-  createTransaction,
-  createNotification,
-  updateUserLevel,
-} from "@/utils/db/actions";
+} from "@/utils/db/actions/reports";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogFooter,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
+import { Eye, Trash2, CheckCircle } from "lucide-react";
+import toast from "react-hot-toast";
+
+interface Report {
+  id: number;
+  userId: number;
+  location: string;
+  wasteType: string;
+  amount: string;
+  status: string;
+  createdAt: Date;
+  imageUrl?: string | null;
+}
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Fetch Reports on Page Load
+  // 🔥 Fetch all reports on page load
   useEffect(() => {
     async function fetchReports() {
-      const fetchedReports = await getRecentReports(50); // Fetch latest 50 reports
-      setReports(fetchedReports);
+      try {
+        const data = await getAllReports();
+        setReports(data);
+        setFilteredReports(data);
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+        toast.error("Failed to load reports.");
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchReports();
   }, []);
 
-  // Open Image Dialog
-  const viewImage = (imageUrl: string) => {
-    setSelectedImage(imageUrl);
-    setIsImageDialogOpen(true);
+  // 🔎 Filter reports based on search term
+  useEffect(() => {
+    const filtered = reports.filter(
+      (report) =>
+        report.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.wasteType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredReports(filtered);
+  }, [searchTerm, reports]);
+
+  // 🔍 Open report details dialog
+  const openReportDetails = (report: Report) => {
+    setSelectedReport(report);
+    setIsDetailsOpen(true);
   };
 
-  // Open Delete Confirmation Dialog
-  const confirmDelete = (reportId: number) => {
-    setDeleteReportId(reportId);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Handle Report Deletion
-  const handleDelete = async () => {
-    if (!deleteReportId) return;
-
-    const result = await deleteReport(deleteReportId);
-    if (result.success) {
-      toast.success("Report deleted successfully!");
-      setReports((prevReports) =>
-        prevReports.filter((report) => report.id !== deleteReportId)
-      );
-    } else {
-      toast.error("Failed to delete report.");
-    }
-
-    setIsDeleteDialogOpen(false);
-    setDeleteReportId(null);
-  };
-
-  // Handle Status Update with Reward and Notification
-  const handleStatusChange = async (reportId: number, newStatus: string) => {
-    const report = reports.find((r) => r.id === reportId);
-    if (!report) return;
-
-    const result = await updateReportStatus(reportId, newStatus);
-
-    if (result.success) {
-      toast.success(`Status updated to "${newStatus}"`);
-      setReports((prevReports) =>
-        prevReports.map((report) =>
-          report.id === reportId ? { ...report, status: newStatus } : report
-        )
-      );
-
-      // If status changed to "completed", reward user and send notification
-      if (newStatus === "completed" && report.userId) {
-        try {
-          const rewardAmount = 50;
-          const rewardName = "Report Completion Reward";
-          const rewardDescription =
-            "Points earned for completing a waste report.";
-
-          // Save reward for the user
-          await saveReward(
-            report.userId,
-            rewardAmount,
-            rewardName,
-            rewardDescription
-          );
-
-          await updateUserLevel(report.userId);
-
-          toast.success("User rewarded and notified successfully!");
-        } catch (error) {
-          console.error("Error rewarding user:", error);
-          toast.error("Failed to reward user.");
-        }
-      }
-    } else {
+  // ✅ Update report status
+  const handleUpdateStatus = async (reportId: number, status: string) => {
+    try {
+      await updateReportStatus(reportId, status);
+      toast.success("Report status updated successfully!");
+      refreshReports();
+    } catch (error) {
+      console.error("Error updating report status:", error);
       toast.error("Failed to update status.");
     }
   };
 
+  // ❌ Delete report
+  const handleDeleteReport = async (reportId: number) => {
+    if (!confirm("Are you sure you want to delete this report?")) return;
+    try {
+      await deleteReport(reportId);
+      toast.success("Report deleted successfully!");
+      refreshReports();
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      toast.error("Failed to delete report.");
+    }
+  };
+
+  // 🔄 Refresh reports after update or delete
+  const refreshReports = async () => {
+    const data = await getAllReports();
+    setReports(data);
+    setFilteredReports(data);
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8 text-gray-800">Manage Reports</h1>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-green-700">
+        📄 Report Management
+      </h1>
 
-      <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-4 text-left">Location</th>
-            <th className="p-4 text-left">Waste Type</th>
-            <th className="p-4 text-left">Amount</th>
-            <th className="p-4 text-left">Status</th>
-            <th className="p-4 text-left">Created At</th>
-            <th className="p-4 text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports.length > 0 ? (
-            reports.map((report) => (
-              <tr key={report.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">{report.location}</td>
-                <td className="p-4">{report.wasteType}</td>
-                <td className="p-4">{report.amount}</td>
+      {/* Search Bar */}
+      <Input
+        type="text"
+        placeholder="Search by location, type, or status..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="mb-4 w-full md:w-1/2"
+      />
 
-                {/* Status Dropdown */}
-                <td className="p-4 capitalize">
-                  <Select
-                    value={report.status}
-                    onValueChange={(newStatus) =>
-                      handleStatusChange(report.id, newStatus)
-                    }
+      {/* Report Table */}
+      {isLoading ? (
+        <p className="text-center text-gray-500">Loading reports...</p>
+      ) : (
+        <Table className="w-full bg-white shadow-md rounded-lg">
+          <TableHeader>
+            <TableRow>
+              <TableCell className="font-bold">ID</TableCell>
+              <TableCell className="font-bold">Location</TableCell>
+              <TableCell className="font-bold">Type</TableCell>
+              <TableCell className="font-bold">Amount</TableCell>
+              <TableCell className="font-bold">Status</TableCell>
+              <TableCell className="font-bold">Created At</TableCell>
+              <TableCell className="font-bold">Actions</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredReports.map((report) => (
+              <TableRow key={report.id} className="hover:bg-gray-50">
+                <TableCell>{report.id}</TableCell>
+                <TableCell>{report.location}</TableCell>
+                <TableCell>{report.wasteType}</TableCell>
+                <TableCell>{report.amount}</TableCell>
+                <TableCell>
+                  <span
+                    className={`px-2 py-1 rounded-md text-white ${
+                      report.status === "completed"
+                        ? "bg-green-500"
+                        : report.status === "in-progress"
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                    }`}
                   >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-
-                <td className="p-4">
+                    {report.status}
+                  </span>
+                </TableCell>
+                <TableCell>
                   {new Date(report.createdAt).toLocaleDateString()}
-                </td>
-
-                <td className="p-4 text-center flex justify-center gap-4">
-                  {report.imageUrl && (
-                    <Button
-                      onClick={() => viewImage(report.imageUrl)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Image
-                    </Button>
-                  )}
-
+                </TableCell>
+                <TableCell className="flex space-x-2">
                   <Button
-                    variant="destructive"
-                    onClick={() => confirmDelete(report.id)}
-                    className="flex items-center"
+                    onClick={() => openReportDetails(report)}
+                    className="bg-blue-500 text-white px-3 py-1"
                   >
-                    <Trash className="w-4 h-4 mr-2" /> Delete
+                    <Eye size={18} />
                   </Button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={6} className="p-4 text-center text-gray-500">
-                No reports found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                  <Button
+                    onClick={() => handleUpdateStatus(report.id, "completed")}
+                    className="bg-green-500 text-white px-3 py-1"
+                  >
+                    <CheckCircle size={18} />
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteReport(report.id)}
+                    className="bg-red-500 text-white px-3 py-1"
+                  >
+                    <Trash2 size={18} />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
-      {/* Image Dialog */}
-      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report Image</DialogTitle>
-          </DialogHeader>
-          {selectedImage && (
-            <img
-              src={selectedImage}
-              alt="Report"
-              className="w-full h-auto rounded-lg"
-            />
-          )}
-          <DialogFooter>
-            <Button onClick={() => setIsImageDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-          </DialogHeader>
-          <p>Are you sure you want to delete this report?</p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Report Details Dialog */}
+      {isDetailsOpen && selectedReport && (
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Report Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p>
+                <strong>Location:</strong> {selectedReport.location}
+              </p>
+              <p>
+                <strong>Type:</strong> {selectedReport.wasteType}
+              </p>
+              <p>
+                <strong>Amount:</strong> {selectedReport.amount}
+              </p>
+              <p>
+                <strong>Status:</strong>{" "}
+                <span className="text-green-600">{selectedReport.status}</span>
+              </p>
+              {selectedReport.imageUrl && (
+                <img
+                  src={selectedReport.imageUrl}
+                  alt="Report Image"
+                  className="w-full h-48 object-cover rounded-md"
+                />
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setIsDetailsOpen(false)}
+                className="bg-gray-500"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

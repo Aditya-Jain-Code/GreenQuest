@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -14,11 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "react-hot-toast";
-import {
-  getWasteCollectionTasks,
-  updateTaskStatus,
-  getUserByEmail,
-} from "@/utils/db/actions";
+import { getWasteCollectionTasks } from "@/utils/db/actions/reports";
+import { getUserByEmail } from "@/utils/db/actions/users";
 import { useRouter } from "next/navigation";
 
 type CollectionTask = {
@@ -26,7 +22,7 @@ type CollectionTask = {
   location: string;
   wasteType: string;
   amount: string;
-  status: "pending" | "in_progress" | "completed" | "verified";
+  status: "pending" | "assigned" | "completed" | "unassigned";
   date: string;
   collectorId: number | null;
 };
@@ -80,35 +76,6 @@ export default function CollectPage() {
     fetchUserAndTasks();
   }, []);
 
-  const handleStatusChange = async (
-    taskId: number,
-    newStatus: CollectionTask["status"]
-  ) => {
-    if (!user) {
-      toast.error("Please log in to collect waste.");
-      return;
-    }
-
-    try {
-      const updatedTask = await updateTaskStatus(taskId, newStatus, user.id);
-      if (updatedTask) {
-        setTasks(
-          tasks.map((task) =>
-            task.id === taskId
-              ? { ...task, status: newStatus, collectorId: user.id }
-              : task
-          )
-        );
-        toast.success("Task status updated successfully");
-      } else {
-        toast.error("Failed to update task status. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error updating task status:", error);
-      toast.error("Failed to update task status. Please try again.");
-    }
-  };
-
   const filteredTasks = tasks.filter((task) =>
     task.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -125,15 +92,15 @@ export default function CollectPage() {
         Waste Collection Tasks
       </h1>
 
-      <div className="mb-4 flex items-center">
+      <div className="mb-4 flex items-center space-x-2">
         <Input
           type="text"
           placeholder="Search by area..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="mr-2"
+          className="w-96" // Wider width (24rem)
         />
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" className="shrink-0">
           <Search className="h-4 w-4" />
         </Button>
       </div>
@@ -185,22 +152,7 @@ export default function CollectPage() {
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  {task.status === "pending" && (
-                    <Button
-                      onClick={() => handleStatusChange(task.id, "in_progress")}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Start Collection
-                    </Button>
-                  )}
-                  {task.status === "in_progress" &&
-                    task.collectorId !== user?.id && (
-                      <span className="text-yellow-600 text-sm font-medium">
-                        In progress by another collector
-                      </span>
-                    )}
-                  {task.status === "verified" && (
+                  {task.status === "completed" && (
                     <span className="text-green-600 text-sm font-medium">
                       Reward Earned
                     </span>
@@ -218,9 +170,9 @@ export default function CollectPage() {
 function StatusBadge({ status }: { status: CollectionTask["status"] }) {
   const statusConfig = {
     pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-    in_progress: { color: "bg-blue-100 text-blue-800", icon: Trash2 },
+    assigned: { color: "bg-blue-100 text-blue-800", icon: Trash2 }, // Updated
     completed: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-    verified: { color: "bg-purple-100 text-purple-800", icon: CheckCircle },
+    unassigned: { color: "bg-gray-100 text-gray-800", icon: Calendar }, // Updated
   };
 
   const { color, icon: Icon } = statusConfig[status];

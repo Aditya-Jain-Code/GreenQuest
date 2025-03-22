@@ -8,30 +8,15 @@ import UserBadges from "@/components/UserBadges"; // Import the UserBadges compo
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { getUserIdByEmail, getUserProfile } from "@/utils/db/actions/users";
+import { getUserBadges } from "@/utils/db/actions/badges";
+
 import {
-  getUserIdByEmail,
-  getUserProfile,
   getUserProgress,
-  getUserBadges,
-  updateUserLevel,
-} from "@/utils/db/actions";
+  UserProgress,
+  UserProfile,
+} from "@/utils/db/actions/users";
 import toast from "react-hot-toast";
-
-interface UserProgress {
-  wasteCollected: string;
-  reportsSubmitted: number;
-  rewardsRedeemed: number;
-  co2Offset: number;
-  pointsEarned: number;
-  userLevel: number;
-}
-
-interface UserProfile {
-  id: number; // Ensure this is included
-  name: string;
-  email: string;
-  level: number;
-}
 
 interface UserSettings {
   profilePic: string;
@@ -79,7 +64,6 @@ const ProfilePage = () => {
 
       try {
         const userId = await getUserIdByEmail(userEmail);
-        const bagdes = await getUserBadges(userId!);
         if (!userId) {
           router.push("/login");
           return;

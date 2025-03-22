@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Poppins } from "next/font/google";
 import { ArrowRight } from "lucide-react";
-import { createUser } from "@/utils/db/actions";
+import { createUser } from "@/utils/db/actions/users";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],
@@ -22,7 +21,7 @@ const clientId = process.env.WEB3AUTH_CLIENT_ID;
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
   chainId: "0xaa36a7",
-  rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+  rpcTarget: "https://sepolia.infura.io/v3/275e6ce11c374a4cae8ab243d2b898b4",
   displayName: "Ethereum Sepolia Testnet",
   blockExplorerUrl: "https://sepolia.etherscan.io",
   ticker: "ETH",
@@ -32,7 +31,7 @@ const chainConfig = {
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(true);
-  const [web3auth, setWeb3Auth] = useState(null);
+  const [web3auth, setWeb3Auth] = useState<Web3Auth | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const router = useRouter();
 
@@ -61,7 +60,13 @@ export default function LoginPage() {
         if (web3authInstance.connected) {
           const user = await web3authInstance.getUserInfo();
           setUserInfo(user);
-          router.push("/"); // Redirect to home after login
+
+          // Redirect based on email
+          if (user.email === "adityaj2104x@gmail.com") {
+            router.push("/pickup"); // Redirect to pickup dashboard
+          } else {
+            router.push("/"); // Redirect to home for other users
+          }
         }
       } catch (error) {
         console.error("Web3Auth initialization error:", error);
@@ -102,11 +107,16 @@ export default function LoginPage() {
 
         // ✅ Store user email safely after ensuring it's available
         localStorage.setItem("userEmail", user.email);
+
+        // Redirect based on email
+        if (user.email === "adityaj2104x@gmail.com") {
+          router.push("/pickup"); // Redirect to pickup dashboard
+        } else {
+          router.push("/"); // Redirect to home for other users
+        }
       } else {
         console.error("❌ User email is missing after login.");
       }
-
-      router.push("/"); // Redirect to home after login
     } catch (error) {
       console.error("Login error:", error);
     }

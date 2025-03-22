@@ -10,15 +10,14 @@ import {
   Loader,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  getUserByEmail,
-  getRewardTransactions,
-  getAvailableRewards,
-  redeemReward,
-  createTransaction,
-} from "@/utils/db/actions";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { getUserByEmail } from "@/utils/db/actions/users";
+import {
+  createTransaction,
+  getRewardTransactions,
+} from "@/utils/db/actions/transactions";
+import { getAvailableRewards, redeemReward } from "@/utils/db/actions/rewards";
 
 type Transaction = {
   id: number;

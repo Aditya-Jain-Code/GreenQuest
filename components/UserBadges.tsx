@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getUserBadges } from "@/utils/db/actions";
+import { getUserBadges } from "@/utils/db/actions/badges";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,

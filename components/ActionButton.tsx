@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 export default function ActionButton({
   onClick,
   label,
+  className,
 }: {
   onClick: () => void;
   label: string;
+  className?: string;
 }) {
   return (
     <Button

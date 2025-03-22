@@ -10,13 +10,10 @@ import {
   useJsApiLoader,
   Libraries,
 } from "@react-google-maps/api";
-import {
-  getUserByEmail,
-  createReport,
-  getRecentReports,
-} from "@/utils/db/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { createReport, getRecentReports } from "@/utils/db/actions/reports";
+import { getUserByEmail } from "@/utils/db/actions/users";
 
 const libraries: Libraries = ["places"];
 
@@ -126,15 +123,6 @@ export default function ReportPage() {
     });
   };
 
-  const mockReverseImageSearch = async (file: File): Promise<boolean> => {
-    // Simulate an API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Mock logic: Randomly decide if the image is from the internet
-    const isFromInternet = Math.random() > 0.5; // 50% chance
-    return isFromInternet;
-  };
-
   const handleVerify = async () => {
     if (!file) return;
 
@@ -154,17 +142,7 @@ export default function ReportPage() {
         return;
       }
 
-      // Step 2: Perform reverse image search
-      const isFromInternet = await mockReverseImageSearch(file);
-      if (isFromInternet) {
-        toast.error(
-          "This image appears to be from the internet. Please upload an original photo."
-        );
-        setVerificationStatus("failure");
-        return;
-      }
-
-      // Step 3: Analyze the image using Gemini
+      // Step 2: Analyze the image using Gemini
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 

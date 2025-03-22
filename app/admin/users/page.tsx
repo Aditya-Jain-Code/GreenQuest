@@ -1,174 +1,251 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import {
+  getAllUsers,
+  deleteUser,
+  updateUser,
+  updateUserRole,
+} from "@/utils/db/actions/users";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-hot-toast";
-import { Trash, ChevronLeft, ChevronRight } from "lucide-react";
-import { getAllUsers, deleteUser } from "@/utils/db/actions";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogFooter,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Pencil, Trash2, CheckCircle } from "lucide-react";
+import toast from "react-hot-toast";
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  level: number;
+  role: string;
+  createdAt: Date;
+}
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<
-    Array<{ id: number; email: string; name: string; createdAt: Date }>
-  >([]);
-  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 5;
-
-  // Fetch Users on Page Load
+  // 🔥 Fetch all users on page load
   useEffect(() => {
     async function fetchUsers() {
-      const fetchedUsers = await getAllUsers();
-      setUsers(fetchedUsers);
+      try {
+        const data = await getAllUsers();
+        setUsers(data);
+        setFilteredUsers(data);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users.");
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchUsers();
   }, []);
 
-  // Open Delete Confirmation Dialog
-  const confirmDelete = (userId: number) => {
-    setDeleteUserId(userId);
-    setIsDialogOpen(true);
+  // 🔎 Filter users based on search term
+  useEffect(() => {
+    const filtered = users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  }, [searchTerm, users]);
+
+  // ✏️ Open edit modal
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user);
+    setIsEditOpen(true);
   };
 
-  // Handle User Deletion
-  const handleDelete = async () => {
-    if (!deleteUserId) return;
+  // 📝 Handle user update (name, email, level)
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+    try {
+      await updateUser(selectedUser.id, {
+        name: selectedUser.name,
+        email: selectedUser.email,
+        level: selectedUser.level,
+      });
+      toast.success("User updated successfully!");
+      setIsEditOpen(false);
+      refreshUsers();
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user.");
+    }
+  };
 
-    const result = await deleteUser(deleteUserId);
-    if (result.success) {
+  // 🔄 Update user role
+  const handleUpdateUserRole = async (userId: number, newRole: string) => {
+    try {
+      await updateUserRole(userId, newRole);
+      toast.success("User role updated successfully!");
+      refreshUsers();
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      toast.error("Failed to update user role.");
+    }
+  };
+
+  // ❌ Handle delete user
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+    try {
+      await deleteUser(userId);
       toast.success("User deleted successfully!");
-      setUsers((prevUsers) =>
-        prevUsers.filter((user) => user.id !== deleteUserId)
-      );
-    } else {
+      refreshUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
       toast.error("Failed to delete user.");
     }
-
-    setIsDialogOpen(false);
-    setDeleteUserId(null);
   };
 
-  // Pagination Logic
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
-
-  const nextPage = () => {
-    if (currentPage < Math.ceil(users.length / usersPerPage)) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
+  // 🔄 Refresh user list
+  const refreshUsers = async () => {
+    const data = await getAllUsers();
+    setUsers(data);
+    setFilteredUsers(data);
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8 text-gray-800">Manage Users</h1>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-green-700">
+        👥 User Management
+      </h1>
 
-      <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-4 text-left">Name</th>
-            <th className="p-4 text-left">Email</th>
-            <th className="p-4 text-left">Created At</th>
-            <th className="p-4 text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {currentUsers.length > 0 ? (
-            currentUsers.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">{user.name}</td>
-                <td className="p-4">{user.email}</td>
-                <td className="p-4">
+      {/* Search Bar */}
+      <Input
+        type="text"
+        placeholder="Search by name or email..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="mb-4 w-full md:w-1/2"
+      />
+
+      {/* User Table */}
+      {isLoading ? (
+        <p className="text-center text-gray-500">Loading users...</p>
+      ) : (
+        <Table className="w-full bg-white shadow-md rounded-lg">
+          <TableHeader>
+            <TableRow>
+              <TableCell className="font-bold">ID</TableCell>
+              <TableCell className="font-bold">Name</TableCell>
+              <TableCell className="font-bold">Email</TableCell>
+              <TableCell className="font-bold">Level</TableCell>
+              <TableCell className="font-bold">Role</TableCell>
+              <TableCell className="font-bold">Created At</TableCell>
+              <TableCell className="font-bold">Actions</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.map((user) => (
+              <TableRow key={user.id} className="hover:bg-gray-50">
+                <TableCell>{user.id}</TableCell>
+                <TableCell>{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>{user.level}</TableCell>
+                <TableCell>
+                  <select
+                    value={user.role}
+                    onChange={(e) =>
+                      handleUpdateUserRole(user.id, e.target.value)
+                    }
+                    className="border border-gray-300 rounded px-2 py-1"
+                  >
+                    <option value="user">User</option>
+                    <option value="agent">Agent</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </TableCell>
+                <TableCell>
                   {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-                <td className="p-4">
-                  <div className="flex justify-center">
-                    <Button
-                      variant="destructive"
-                      onClick={() => confirmDelete(user.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white flex items-center"
-                    >
-                      <Trash className="w-4 h-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={4} className="p-4 text-center text-gray-500">
-                No users found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* Pagination Controls */}
-      {users.length > usersPerPage && (
-        <div className="flex justify-between items-center mt-4">
-          <Button
-            onClick={prevPage}
-            disabled={currentPage === 1}
-            variant="outline"
-            className="flex items-center"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-          </Button>
-
-          <span className="text-gray-700">
-            Page {currentPage} of {Math.ceil(users.length / usersPerPage)}
-          </span>
-
-          <Button
-            onClick={nextPage}
-            disabled={currentPage === Math.ceil(users.length / usersPerPage)}
-            variant="outline"
-            className="flex items-center"
-          >
-            Next <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+                </TableCell>
+                <TableCell className="flex space-x-2">
+                  <Button
+                    onClick={() => openEditDialog(user)}
+                    className="bg-blue-500 text-white px-3 py-1"
+                  >
+                    <Pencil size={18} />
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="bg-red-500 text-white px-3 py-1"
+                  >
+                    <Trash2 size={18} />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm User Deletion</DialogTitle>
-            <p className="text-gray-600">
-              Are you sure you want to delete this user? This action cannot be
-              undone.
-            </p>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setIsDialogOpen(false)} variant="outline">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Confirm Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit User Dialog */}
+      {isEditOpen && selectedUser && (
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                label="Name"
+                value={selectedUser.name}
+                onChange={(e) =>
+                  setSelectedUser({ ...selectedUser, name: e.target.value })
+                }
+              />
+              <Input
+                label="Email"
+                value={selectedUser.email}
+                onChange={(e) =>
+                  setSelectedUser({ ...selectedUser, email: e.target.value })
+                }
+              />
+              <Input
+                label="Level"
+                type="number"
+                value={selectedUser.level}
+                onChange={(e) =>
+                  setSelectedUser({ ...selectedUser, level: +e.target.value })
+                }
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setIsEditOpen(false)}
+                className="bg-gray-500"
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateUser} className="bg-green-500">
+                <CheckCircle size={18} className="mr-1" />
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

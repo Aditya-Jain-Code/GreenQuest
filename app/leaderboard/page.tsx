@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getAllRewards, getUserByEmail } from "@/utils/db/actions";
+import { getAllRewards } from "@/utils/db/actions/rewards";
+import { getUserByEmail } from "@/utils/db/actions/users";
 import { Loader, Award, User, Trophy, Crown } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ export default function LeaderboardPage() {
     id: number;
     email: string;
     name: string;
+    level: number;
   } | null>(null);
 
   const router = useRouter();
@@ -35,31 +37,32 @@ export default function LeaderboardPage() {
         const fetchedRewards = await getAllRewards();
 
         // Aggregate rewards by user
-        const aggregatedRewardsMap = new Map<number, Reward>();
+        const aggregatedRewardsMap = new Map<
+          number,
+          Reward & { level: number }
+        >();
 
         fetchedRewards.forEach((reward) => {
           if (aggregatedRewardsMap.has(reward.userId)) {
             const existing = aggregatedRewardsMap.get(reward.userId)!;
             existing.points += reward.points;
-            existing.level = Math.max(existing.level, reward.level);
           } else {
-            aggregatedRewardsMap.set(reward.userId, { ...reward });
+            aggregatedRewardsMap.set(reward.userId, { ...reward, level: 1 }); // Default level
           }
         });
 
-        const aggregatedRewards = Array.from(aggregatedRewardsMap.values());
-
-        // Sort by points in descending order
-        aggregatedRewards.sort((a, b) => b.points - a.points);
-
-        setRewards(aggregatedRewards);
-
-        // Fetch user
+        // Fetch user levels and update the aggregated rewards
         const userEmail = localStorage.getItem("userEmail");
         if (userEmail) {
           const fetchedUser = await getUserByEmail(userEmail);
           if (fetchedUser) {
             setUser(fetchedUser);
+
+            // Update the level for the current user in the aggregated rewards
+            if (aggregatedRewardsMap.has(fetchedUser.id)) {
+              aggregatedRewardsMap.get(fetchedUser.id)!.level =
+                fetchedUser.level;
+            }
           } else if (!toastShown.current) {
             toast.error("User not found. Please log in again.");
             toastShown.current = true;
@@ -70,6 +73,13 @@ export default function LeaderboardPage() {
           toastShown.current = true;
           router.push("/login");
         }
+
+        const aggregatedRewards = Array.from(aggregatedRewardsMap.values());
+
+        // Sort by points in descending order
+        aggregatedRewards.sort((a, b) => b.points - a.points);
+
+        setRewards(aggregatedRewards);
       } catch (error) {
         console.error("Error fetching rewards and user:", error);
         toast.error("Failed to load leaderboard. Please try again.");
@@ -168,7 +178,10 @@ export default function LeaderboardPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                          Level {reward.level}
+                          Level{" "}
+                          {user && user.id === reward.userId
+                            ? user.level
+                            : reward.level}
                         </span>
                       </td>
                     </tr>
