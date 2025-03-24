@@ -28,15 +28,10 @@ export default function AdminSettingsPage() {
   // ✅ Fetch Admin Details
   useEffect(() => {
     async function fetchUser() {
-      const userEmail = localStorage.getItem("userEmail");
-      if (!userEmail) {
-        toast.error("Please login to access admin settings.");
-        router.push("/admin/login");
-        return;
-      }
+      const adminEmail = localStorage.getItem("adminEmail");
 
       try {
-        const userData = await getUserByEmail(userEmail);
+        const userData = await getUserByEmail(adminEmail!);
         if (userData?.role !== "admin") {
           toast.error("Unauthorized. Only admins can access settings.");
           router.push("/not-authorized");

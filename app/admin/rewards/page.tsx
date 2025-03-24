@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
 import { Edit, Trash2, PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getUserByEmail } from "@/utils/db/actions/users";
 
 interface Reward {
   id: number;
@@ -52,6 +54,34 @@ export default function AdminRewardsPage() {
     description: "",
     collectionInfo: "",
   });
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
 
   // 🔥 Fetch rewards on page load
   useEffect(() => {
@@ -64,8 +94,11 @@ export default function AdminRewardsPage() {
         toast.error("Failed to load rewards.");
       }
     }
-    fetchRewards();
-  }, []);
+
+    if (authorized) {
+      fetchRewards();
+    }
+  }, [authorized]);
 
   // 📝 Handle input changes for reward form
   const handleInputChange = (

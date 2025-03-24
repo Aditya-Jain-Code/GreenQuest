@@ -7,7 +7,7 @@ import {
   assignCollector,
   unassignCollector,
 } from "@/utils/db/actions/pickups";
-import { getAllUsers } from "@/utils/db/actions/users";
+import { getAllUsers, getUserByEmail } from "@/utils/db/actions/users";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "react-hot-toast";
 import { Loader2, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface PickupRequest {
   id: number;
@@ -46,8 +47,36 @@ interface User {
 
 export default function PickupRequestsPage() {
   const [requests, setRequests] = useState<PickupRequest[]>([]);
-  const [collectors, setCollectors] = useState<User[]>([]);
+  const [agents, setAgents] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
 
   // ✅ Fetch all pickup requests and available collectors/agents
   useEffect(() => {
@@ -59,11 +88,7 @@ export default function PickupRequestsPage() {
         ]);
 
         // ✅ Filter only 'agent' and 'collector' roles for assignment
-        setCollectors(
-          userData.filter(
-            (user) => user.role === "collector" || user.role === "agent"
-          )
-        );
+        setAgents(userData.filter((user) => user.role === "agent"));
         setRequests(pickupData);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -72,10 +97,13 @@ export default function PickupRequestsPage() {
         setLoading(false);
       }
     }
-    fetchData();
-  }, []);
 
-  // ✅ Handle assigning a collector/agent
+    if (authorized) {
+      fetchData();
+    }
+  }, [authorized]);
+
+  // ✅ Handle assigning a agent
   const handleAssignCollector = async (
     reportId: number,
     collectorId: number | null
@@ -83,27 +111,27 @@ export default function PickupRequestsPage() {
     try {
       if (collectorId) {
         await assignCollector(reportId, collectorId);
-        toast.success("Collector/Agent assigned successfully!");
+        toast.success("Agent assigned successfully!");
       } else {
         await unassignCollector(reportId);
-        toast.success("Collector/Agent unassigned successfully!");
+        toast.success("Agent unassigned successfully!");
       }
       refreshRequests();
     } catch (error) {
-      console.error("Error assigning/unassigning collector/agent:", error);
-      toast.error("Failed to assign/unassign collector/agent.");
+      console.error("Error assigning/unassigning agent:", error);
+      toast.error("Failed to assign/unassign agent.");
     }
   };
 
-  // ✅ Handle unassigning a collector/agent
+  // ✅ Handle unassigning a agent
   const handleUnassignCollector = async (reportId: number) => {
     try {
       await unassignCollector(reportId);
-      toast.success("Collector/Agent unassigned successfully!");
+      toast.success("Agent unassigned successfully!");
       refreshRequests();
     } catch (error) {
-      console.error("Error unassigning collector/agent:", error);
-      toast.error("Failed to unassign collector/agent.");
+      console.error("Error unassigning agent:", error);
+      toast.error("Failed to unassign agent.");
     }
   };
 
@@ -148,7 +176,7 @@ export default function PickupRequestsPage() {
             <TableCell className="font-bold">Waste Type</TableCell>
             <TableCell className="font-bold">Amount</TableCell>
             <TableCell className="font-bold">Status</TableCell>
-            <TableCell className="font-bold">Collector/Agent</TableCell>
+            <TableCell className="font-bold">Agent</TableCell>
             <TableCell className="font-bold">Actions</TableCell>
           </TableRow>
         </TableHeader>
@@ -179,7 +207,7 @@ export default function PickupRequestsPage() {
                 </Select>
               </TableCell>
 
-              {/* Assign Collector/Agent Dropdown */}
+              {/* Assign Agent Dropdown */}
               <TableCell>
                 <Select
                   value={
@@ -195,16 +223,13 @@ export default function PickupRequestsPage() {
                   }
                 >
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Assign Collector/Agent" />
+                    <SelectValue placeholder="Assign Agent" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {collectors.map((collector) => (
-                      <SelectItem
-                        key={collector.id}
-                        value={String(collector.id)}
-                      >
-                        {collector.name} ({collector.role})
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={String(agent.id)}>
+                        {agent.name} ({agent.role})
                       </SelectItem>
                     ))}
                   </SelectContent>

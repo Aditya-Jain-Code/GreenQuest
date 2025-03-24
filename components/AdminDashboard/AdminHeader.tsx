@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Menu,
-  LayoutDashboard,
-  Users,
-  FileText,
-  Gift,
-  Bell,
-  LogOut,
-  Settings,
-} from "lucide-react";
+import { Menu, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,7 +19,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("userEmail"); // Clear user session
+    localStorage.removeItem("adminEmail"); // Clear user session
     router.push("/admin/login"); // Redirect to login
   };
 
@@ -39,14 +30,17 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
         <Button
           variant="ghost"
           size="icon"
-          className="mr-2 md:mr-4"
+          className="mr-2 md:mr-4 hover:bg-green-100 focus:ring-2 focus:ring-green-500 rounded-lg"
           onClick={onMenuClick}
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-6 w-6 text-green-700" />
         </Button>
 
         {/* Logo / Title */}
-        <Link href="/admin" className="text-2xl font-bold text-green-700">
+        <Link
+          href="/admin"
+          className="text-2xl font-bold text-green-700 hover:text-green-600 transition-all"
+        >
           🌱 Green-Quest Admin
         </Link>
 
@@ -55,24 +49,24 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center space-x-2 hover:bg-green-100"
+              className="flex items-center space-x-2 hover:bg-green-100 focus:ring-2 focus:ring-green-500 rounded-lg px-4 py-2"
             >
-              <span>👤 Admin</span>
+              <span className="font-medium text-gray-700">👤 Admin</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white text-gray-700 shadow-lg rounded-lg">
+          <DropdownMenuContent className="bg-white text-gray-700 shadow-xl rounded-lg w-48 mt-2 border border-gray-200">
             <DropdownMenuItem
               onClick={() => router.push("/admin/settings")}
-              className="flex items-center space-x-2 cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 hover:bg-green-100 hover:text-green-700 cursor-pointer rounded-md"
             >
-              <Settings size={16} />
+              <Settings size={16} className="text-green-600" />
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleLogout}
-              className="flex items-center space-x-2 text-red-600 cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 hover:bg-red-100 hover:text-red-700 cursor-pointer rounded-md"
             >
-              <LogOut size={16} />
+              <LogOut size={16} className="text-red-600" />
               <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

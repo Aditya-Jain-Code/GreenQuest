@@ -14,6 +14,7 @@ import { Button } from "../ui/button";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
+  { name: "Dashboard", icon: FileText, path: "/admin" },
   { name: "Users", icon: Users, path: "/admin/users" },
   { name: "Reports", icon: FileText, path: "/admin/reports" },
   {

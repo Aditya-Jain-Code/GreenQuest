@@ -6,6 +6,7 @@ import {
   deleteUser,
   updateUser,
   updateUserRole,
+  getUserByEmail,
 } from "@/utils/db/actions/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Trash2, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
@@ -42,6 +44,34 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
 
   // 🔥 Fetch all users on page load
   useEffect(() => {
@@ -57,8 +87,11 @@ export default function AdminUsersPage() {
         setIsLoading(false);
       }
     }
-    fetchUsers();
-  }, []);
+
+    if (authorized) {
+      fetchUsers();
+    }
+  }, [authorized]);
 
   // 🔎 Filter users based on search term
   useEffect(() => {

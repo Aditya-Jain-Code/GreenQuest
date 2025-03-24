@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DashboardWidget from "./DashboardWidget";
 import { getDashboardStats } from "@/utils/db/actions/admin";
+import { getUserByEmail } from "@/utils/db/actions/users"; // Fetch user details
 import { Loader } from "lucide-react";
 import ReportSummary from "./ReportSummary";
 import RecentUsers from "./RecentUsers";
@@ -21,6 +23,34 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -34,8 +64,10 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (authorized) {
+      fetchStats();
+    }
+  }, [authorized]);
 
   if (loading) {
     return (

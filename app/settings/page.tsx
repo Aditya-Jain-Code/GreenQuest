@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Mail,
@@ -53,6 +53,7 @@ export default function SettingsPage() {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
+  const toastShown = useRef(false);
   const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
   const chainConfig = {
@@ -75,6 +76,18 @@ export default function SettingsPage() {
 
   // Load settings from localStorage on mount
   useEffect(() => {
+    const email = localStorage.getItem("userEmail");
+    if (!email) {
+      if (!toastShown.current) {
+        toast.error("User email not found. Please login again.");
+        toastShown.current = true;
+        router.push("/");
+      }
+      return;
+    }
+
+    setUserEmail(email);
+
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
       const parsedSettings = JSON.parse(saved);
@@ -82,13 +95,8 @@ export default function SettingsPage() {
       setSavedSettings(parsedSettings); // Store a copy for reset functionality
     }
 
-    const email = localStorage.getItem("userEmail");
-    setUserEmail(email);
-
-    if (email) {
-      getUserIdByEmail(email).then((id) => setUserId(id));
-    }
-  }, []);
+    getUserIdByEmail(email).then((id) => setUserId(id));
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

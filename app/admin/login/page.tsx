@@ -78,7 +78,7 @@ export default function AdminLoginPage() {
         const user = await getUserByEmail(userInfo.email);
         if (user?.role === "admin") {
           // 🎉 Redirect to Admin Dashboard
-          localStorage.setItem("userEmail", userInfo.email);
+          localStorage.setItem("adminEmail", userInfo.email);
           router.push("/admin");
           toast.success("Welcome, Admin!");
         } else {
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-100 to-green-300">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-96 transform hover:scale-105 transition-transform duration-300">
         <h1 className="text-3xl font-bold text-center text-green-700 mb-4">
           🔐 Admin Login

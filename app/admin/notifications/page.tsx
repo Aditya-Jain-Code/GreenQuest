@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { getUserByEmail } from "@/utils/db/actions/users";
 
 interface Notification {
   id: number;
@@ -28,10 +30,40 @@ const NotificationPage: React.FC = () => {
     message: "",
     type: "general",
   });
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
+
+  useEffect(() => {
+    if (authorized) {
+      fetchNotifications();
+    }
+  }, [authorized]);
 
   // Fetch notifications from DB
   const fetchNotifications = async () => {

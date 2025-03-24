@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { Eye, Trash2, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { getUserByEmail } from "@/utils/db/actions/users";
 
 interface Report {
   id: number;
@@ -43,6 +45,34 @@ export default function AdminReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
 
   // 🔥 Fetch all reports on page load
   useEffect(() => {
@@ -58,8 +88,11 @@ export default function AdminReportsPage() {
         setIsLoading(false);
       }
     }
-    fetchReports();
-  }, []);
+
+    if (authorized) {
+      fetchReports();
+    }
+  }, [authorized]);
 
   // 🔎 Filter reports based on search term
   useEffect(() => {
@@ -153,7 +186,7 @@ export default function AdminReportsPage() {
                     className={`px-2 py-1 rounded-md text-white ${
                       report.status === "completed"
                         ? "bg-green-500"
-                        : report.status === "in-progress"
+                        : report.status === "in_progress"
                         ? "bg-yellow-500"
                         : "bg-red-500"
                     }`}

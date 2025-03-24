@@ -7,7 +7,7 @@ import { createReward } from "./rewards";
 import { updateUserLevel } from "./helperActions";
 import { awardUserBadges } from "./badges";
 
-export const getRecentReports = async (limit: number) => {
+export const getRecentReports = async (limit: number = 10) => {
   const reports = await db
     .select({
       id: Reports.id,
@@ -15,6 +15,8 @@ export const getRecentReports = async (limit: number) => {
       wasteType: Reports.wasteType,
       status: Reports.status,
       createdAt: Reports.createdAt,
+      amount: Reports.amount,
+      location: Reports.location,
     })
     .from(Reports)
     .leftJoin(Users, eq(Reports.userId, Users.id)) // Join with Users table
@@ -177,7 +179,14 @@ export async function deleteReport(reportId: number) {
   }
 }
 
-const VALID_STATUSES = ["pending", "in_progress", "completed", "cancelled"];
+const VALID_STATUSES = [
+  "pending",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "assigned",
+  "unassigned",
+];
 
 export async function updateReportStatus(reportId: number, newStatus: string) {
   try {

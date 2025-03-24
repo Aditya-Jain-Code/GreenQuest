@@ -4,15 +4,47 @@ import React, { useEffect, useState } from "react";
 import TransactionTable from "./TransactionTable";
 import { getAllTransactions } from "@/utils/db/actions/transactions";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
+import { getUserByEmail } from "@/utils/db/actions/users";
 
 const TransactionPage = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [authorized, setAuthorized] = useState<boolean>(false);
+
+  const router = useRouter();
 
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    const checkUserRole = async () => {
+      try {
+        const adminEmail = localStorage.getItem("adminEmail");
+        if (!adminEmail) {
+          router.push("/not-authorized"); // Redirect if no user
+          return;
+        }
+
+        const user = await getUserByEmail(adminEmail);
+        if (user?.role !== "admin") {
+          router.push("/not-authorized"); // Redirect if not admin
+          return;
+        }
+
+        setAuthorized(true); // Allow if admin
+      } catch (error) {
+        console.error("❌ Error verifying user role:", error);
+        router.push("/not-authorized"); // Redirect on error
+      }
+    };
+
+    checkUserRole();
+  }, [router]);
+
+  useEffect(() => {
+    if (authorized) {
+      fetchTransactions();
+    }
+  }, [authorized]);
 
   const fetchTransactions = async () => {
     try {

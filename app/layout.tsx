@@ -39,6 +39,14 @@ export default function RootLayout({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  if (pathname === "/not-authorized") {
+    return (
+      <html>
+        <body>{children}</body>
+      </html>
+    );
+  }
+
   return (
     <html lang="en">
       <body className={poppins.className}>
