@@ -60,13 +60,6 @@ export default function LoginPage() {
         if (web3authInstance.connected) {
           const user = await web3authInstance.getUserInfo();
           setUserInfo(user);
-
-          // Redirect based on email
-          if (user.email === "adityaj2104x@gmail.com") {
-            router.push("/pickup"); // Redirect to pickup dashboard
-          } else {
-            router.push("/"); // Redirect to home for other users
-          }
         }
       } catch (error) {
         console.error("Web3Auth initialization error:", error);
@@ -107,13 +100,6 @@ export default function LoginPage() {
 
         // ✅ Store user email safely after ensuring it's available
         localStorage.setItem("userEmail", user.email);
-
-        // Redirect based on email
-        if (user.email === "adityaj2104x@gmail.com") {
-          router.push("/pickup"); // Redirect to pickup dashboard
-        } else {
-          router.push("/"); // Redirect to home for other users
-        }
       } else {
         console.error("❌ User email is missing after login.");
       }

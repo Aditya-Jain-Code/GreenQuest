@@ -33,6 +33,7 @@ export const Reports = pgTable("reports", {
   verificationResult: jsonb("verification_result"),
   status: varchar("status", { length: 255 }).notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
   collectorId: integer("collector_id").references(() => Users.id),
 });
 

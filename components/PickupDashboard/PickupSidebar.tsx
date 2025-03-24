@@ -1,53 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Users,
-  FileText,
-  Bell,
-  Gift,
-  Shield,
-  FileBarChart,
-  Truck,
-  LayoutGrid,
-} from "lucide-react";
-import { Button } from "../ui/button";
+import { LayoutGrid, List, User, Settings, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 
+// Sidebar menu items
 const menuItems = [
-  { name: "Dashboard", icon: LayoutGrid, path: "/admin" },
-  { name: "Users", icon: Users, path: "/admin/users" },
-  { name: "Reports", icon: FileText, path: "/admin/reports" },
-  {
-    name: "Notifications",
-    icon: Bell,
-    path: "/admin/notifications",
-  },
-  { name: "Rewards", icon: Gift, path: "/admin/rewards" },
-  { name: "Badges", icon: Shield, path: "/admin/badges" },
-  {
-    name: "Transaction Logs",
-    icon: FileBarChart,
-    path: "/admin/transactions",
-  },
-  {
-    name: "Pickup Requests",
-    icon: Truck,
-    path: "/admin/pickups",
-  },
+  { name: "Dashboard", icon: LayoutGrid, path: "/pickup" },
+  { name: "Assigned Pickups", icon: List, path: "/pickup/assigned" },
+  { name: "History", icon: History, path: "/pickup/history" },
+  { name: "Profile", icon: User, path: "/pickup/profile" },
+  { name: "Settings", icon: Settings, path: "/pickup/settings" },
 ];
 
-interface AdminSidebarProps {
+interface PickupSidebarProps {
   open: boolean;
 }
 
-export default function AdminSiderbar({ open }: AdminSidebarProps) {
+export default function PickupSidebar({ open }: PickupSidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside
       className={`bg-white border-r pt-20 border-gray-200 text-gray-800 w-64 fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out ${
-        open ? "translate-x-0" : "translate-x-full"
+        open ? "translate-x-0" : "-translate-x-full"
       } lg:translate-x-0`}
     >
       <nav className="h-full flex flex-col justify-between">

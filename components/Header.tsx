@@ -191,13 +191,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
       if (user && user.email) {
         setUserInfo(user);
         localStorage.setItem("userEmail", user.email);
-
-        // Redirect based on email
-        if (user.email === "adityaj2104x@gmail.com") {
-          router.push("/pickup"); // Redirect to pickup dashboard
-        } else {
-          router.push("/"); // Redirect to home for other users
-        }
       } else {
         console.error("❌ User email is missing after login.");
       }
