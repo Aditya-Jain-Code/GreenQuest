@@ -168,7 +168,12 @@ export async function getReward(userId: number) {
   }
 }
 
-export async function createReward(userId: number, points: number) {
+export async function createReward(
+  userId: number,
+  points: number,
+  name: string,
+  description: string
+) {
   try {
     // Check if userId is valid before inserting
     const [userExists] = await db
@@ -182,17 +187,17 @@ export async function createReward(userId: number, points: number) {
       throw new Error(`User with ID ${userId} does not exist.`);
     }
 
-    // Insert reward with valid userId
+    // Insert reward with dynamic name and description
     const [createdReward] = await db
       .insert(Rewards)
       .values({
-        userId, // Now passing valid userId
-        name: "Report Submission Reward",
+        userId,
+        name, // Pass name as parameter
         collectionInfo: "Points earned from waste report",
-        points, // Points passed as parameter
+        points,
         level: 1,
         isAvailable: true,
-        description: "Points awarded for submitting a waste report.",
+        description, // Pass description as parameter
       })
       .returning({
         id: Rewards.id,

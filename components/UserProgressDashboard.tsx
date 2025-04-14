@@ -33,7 +33,7 @@ const UserProgressDashboard: React.FC<UserProgressProps> = ({
       color: "from-green-400 to-green-600",
     },
     {
-      title: "Reports Submitted",
+      title: "Reports Completed",
       value: reportsSubmitted,
       icon: <FaLeaf />,
       color: "from-blue-400 to-blue-600",

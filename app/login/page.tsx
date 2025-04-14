@@ -35,6 +35,14 @@ export default function LoginPage() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const router = useRouter();
 
+  // ✅ Check if user is already logged in and redirect to "/"
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedEmail) {
+      router.push("/");
+    }
+  }, [router]);
+
   useEffect(() => {
     const initWeb3Auth = async () => {
       if (!clientId) {
@@ -69,13 +77,16 @@ export default function LoginPage() {
     };
 
     initWeb3Auth();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const registerUser = async () => {
       if (userInfo && userInfo.email) {
         try {
           await createUser(userInfo.email, userInfo.name || "Anonymous User");
+
+          // ✅ Redirect to "/" after successful login
+          router.push("/");
         } catch (error) {
           console.error("❌ Error creating user in DB:", error);
         }
@@ -83,7 +94,7 @@ export default function LoginPage() {
     };
 
     registerUser();
-  }, [userInfo]);
+  }, [userInfo, router]);
 
   const login = async () => {
     if (!web3auth) {
@@ -98,8 +109,9 @@ export default function LoginPage() {
       if (user && user.email) {
         setUserInfo(user);
 
-        // ✅ Store user email safely after ensuring it's available
+        // ✅ Store user email in localStorage and redirect to "/"
         localStorage.setItem("userEmail", user.email);
+        router.push("/");
       } else {
         console.error("❌ User email is missing after login.");
       }

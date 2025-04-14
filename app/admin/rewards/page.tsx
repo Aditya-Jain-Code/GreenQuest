@@ -112,18 +112,21 @@ export default function AdminRewardsPage() {
   const handleSaveReward = async () => {
     try {
       if (isEditMode && selectedReward) {
-        // Update reward points using `updateRewardPoints()`
         await updateRewardPoints(selectedReward.userId, newReward.points);
         toast.success("Reward updated successfully!");
       } else {
-        // Create a new reward using `createReward()`
-        await createReward(newReward.userId, newReward.points);
+        await createReward(
+          newReward.userId,
+          newReward.points,
+          newReward.name,
+          newReward.description || "Points awarded for completing a task."
+        );
         toast.success("Reward added successfully!");
       }
       refreshRewards();
       closeDialog();
     } catch (error) {
-      console.error("Error saving reward:", error);
+      console.error("❌ Error saving reward:", error);
       toast.error("Failed to save reward.");
     }
   };

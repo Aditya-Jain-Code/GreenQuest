@@ -26,6 +26,7 @@ import {
 import { toast } from "react-hot-toast";
 import { Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { updateReportStatus } from "@/utils/db/actions/reports";
 
 interface PickupRequest {
   id: number;
@@ -44,6 +45,8 @@ interface User {
   name: string;
   role: string; // Updated to include roles properly
 }
+
+type PickupStatus = "assigned" | "completed" | "in_progress";
 
 export default function PickupRequestsPage() {
   const [requests, setRequests] = useState<PickupRequest[]>([]);
@@ -136,9 +139,12 @@ export default function PickupRequestsPage() {
   };
 
   // ✅ Handle status update
-  const handleStatusChange = async (reportId: number, newStatus: string) => {
+  const handleStatusChange = async (
+    reportId: number,
+    newStatus: PickupStatus
+  ) => {
     try {
-      await updatePickupStatus(reportId, newStatus);
+      await updateReportStatus(reportId, newStatus);
       toast.success(`Status updated to ${newStatus}`);
       refreshRequests();
     } catch (error) {
@@ -193,7 +199,7 @@ export default function PickupRequestsPage() {
                 <Select
                   value={request.status}
                   onValueChange={(value) =>
-                    handleStatusChange(request.id, value)
+                    handleStatusChange(request.id, value as PickupStatus)
                   }
                 >
                   <SelectTrigger className="w-[150px]">
@@ -203,6 +209,7 @@ export default function PickupRequestsPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="assigned">Assigned</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
                   </SelectContent>
                 </Select>
               </TableCell>

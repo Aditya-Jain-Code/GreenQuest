@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Save, Undo2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type SettingsData = {
   name: string;
@@ -24,9 +25,17 @@ export default function PickupSettingsPage() {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const router = useRouter();
 
   // Load settings from localStorage on page load
   useEffect(() => {
+    const agentEmail = localStorage.getItem("agentEmail");
+    if (!agentEmail) {
+      toast.error("User not found. Please log in again.");
+      router.push("/pickup/login");
+      return;
+    }
+
     const storedSettings = localStorage.getItem("pickupSettings");
     if (storedSettings) {
       setSettings(JSON.parse(storedSettings));

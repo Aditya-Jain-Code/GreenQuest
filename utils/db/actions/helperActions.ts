@@ -1,6 +1,7 @@
 import { db } from "../dbConfig";
 import { Users, Reports, Transactions } from "../schema";
 import { eq, and } from "drizzle-orm";
+import { createNotification } from "./notifications";
 
 const calculateUserLevel = (waste: number, reports: number, points: number) => {
   if (waste >= 500 || reports >= 200 || points >= 5000) return 5;
@@ -43,6 +44,8 @@ export const updateUserLevel = async (userId: number) => {
 
     // Calculate user's new level
     const newLevel = calculateUserLevel(totalWaste, reportCount, totalPoints);
+
+    await createNotification(userId, "You have leveled up.", "level_up");
 
     // Update the user's level in the database if changed
     await db

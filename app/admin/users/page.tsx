@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   getAllUsers,
   deleteUser,
   updateUser,
   updateUserRole,
   getUserByEmail,
+  createUser,
 } from "@/utils/db/actions/users";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableHeader,
@@ -24,9 +25,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2, CheckCircle } from "lucide-react";
-import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import {
+  Pencil,
+  Trash2,
+  CheckCircle,
+  PlusCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface User {
   id: number;
@@ -43,37 +50,46 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+  const [isAddUserOpen, setIsAddUserOpen] = useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] =
+    useState<boolean>(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authorized, setAuthorized] = useState<boolean>(false);
 
+  // ✅ State for new user fields
+  const [newUserName, setNewUserName] = useState<string>("");
+  const [newUserEmail, setNewUserEmail] = useState<string>("");
+
   const router = useRouter();
 
+  // ✅ Check if logged-in user is admin
   useEffect(() => {
     const checkUserRole = async () => {
       try {
         const adminEmail = localStorage.getItem("adminEmail");
         if (!adminEmail) {
-          router.push("/not-authorized"); // Redirect if no user
+          router.push("/not-authorized");
           return;
         }
 
         const user = await getUserByEmail(adminEmail);
         if (user?.role !== "admin") {
-          router.push("/not-authorized"); // Redirect if not admin
+          router.push("/not-authorized");
           return;
         }
 
-        setAuthorized(true); // Allow if admin
+        setAuthorized(true);
       } catch (error) {
         console.error("❌ Error verifying user role:", error);
-        router.push("/not-authorized"); // Redirect on error
+        router.push("/not-authorized");
       }
     };
 
     checkUserRole();
   }, [router]);
 
-  // 🔥 Fetch all users on page load
+  // 🔥 Fetch all users
   useEffect(() => {
     async function fetchUsers() {
       try {
@@ -105,13 +121,16 @@ export default function AdminUsersPage() {
 
   // ✏️ Open edit modal
   const openEditDialog = (user: User) => {
-    setSelectedUser(user);
+    setSelectedUser({ ...user }); // ✅ Clone user to prevent modifying original data
     setIsEditOpen(true);
   };
 
-  // 📝 Handle user update (name, email, level)
+  // 📝 Handle user update
   const handleUpdateUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      toast.error("No user selected.");
+      return;
+    }
     try {
       await updateUser(selectedUser.id, {
         name: selectedUser.name,
@@ -139,12 +158,50 @@ export default function AdminUsersPage() {
     }
   };
 
-  // ❌ Handle delete user
-  const handleDeleteUser = async (userId: number) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+  // 📝 Handle input changes in the edit modal
+  const handleEditChange = (field: keyof User, value: string | number) => {
+    if (selectedUser) {
+      setSelectedUser({ ...selectedUser, [field]: value });
+    }
+  };
+
+  // ➕ Handle adding new user
+  const handleAddUser = async () => {
+    if (!newUserEmail || !newUserName) {
+      toast.error("Please fill out all fields.");
+      return;
+    }
+
     try {
-      await deleteUser(userId);
+      const newUser = await createUser(newUserEmail, newUserName);
+
+      if (newUser) {
+        toast.success("User added successfully!");
+        setIsAddUserOpen(false);
+        refreshUsers();
+        resetNewUserForm();
+      } else {
+        toast.error("User already exists or failed to create.");
+      }
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast.error("Failed to create user.");
+    }
+  };
+
+  // ❌ Open delete confirmation dialog
+  const confirmDeleteUser = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  // ❌ Handle delete user with confirmation
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await deleteUser(userToDelete.id);
       toast.success("User deleted successfully!");
+      setIsDeleteConfirmOpen(false);
       refreshUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -159,20 +216,34 @@ export default function AdminUsersPage() {
     setFilteredUsers(data);
   };
 
+  // 🔄 Reset new user form
+  const resetNewUserForm = () => {
+    setNewUserName("");
+    setNewUserEmail("");
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-green-700">
         👥 User Management
       </h1>
 
-      {/* Search Bar */}
-      <Input
-        type="text"
-        placeholder="Search by name or email..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 w-full md:w-1/2"
-      />
+      <div className="flex justify-between items-center mb-4">
+        <Input
+          type="text"
+          placeholder="Search by name or email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full md:min-w-[300px] md:max-w-[500px] py-3 text-lg"
+        />
+        <Button
+          onClick={() => setIsAddUserOpen(true)}
+          className="bg-green-500 text-white"
+        >
+          <PlusCircle size={18} className="mr-1" />
+          Add User
+        </Button>
+      </div>
 
       {/* User Table */}
       {isLoading ? (
@@ -221,7 +292,7 @@ export default function AdminUsersPage() {
                     <Pencil size={18} />
                   </Button>
                   <Button
-                    onClick={() => handleDeleteUser(user.id)}
+                    onClick={() => confirmDeleteUser(user)}
                     className="bg-red-500 text-white px-3 py-1"
                   >
                     <Trash2 size={18} />
@@ -233,52 +304,111 @@ export default function AdminUsersPage() {
         </Table>
       )}
 
-      {/* Edit User Dialog */}
-      {isEditOpen && selectedUser && (
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-            </DialogHeader>
+      {/* ✅ Add New User Dialog */}
+      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              label="Name"
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+            />
+            <Input
+              label="Email"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsAddUserOpen(false)}
+              className="bg-gray-500"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddUser} className="bg-green-500">
+              <CheckCircle size={18} className="mr-1" />
+              Add User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 📝 Edit User Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
             <div className="space-y-4">
               <Input
                 label="Name"
                 value={selectedUser.name}
-                onChange={(e) =>
-                  setSelectedUser({ ...selectedUser, name: e.target.value })
-                }
+                onChange={(e) => handleEditChange("name", e.target.value)}
               />
               <Input
                 label="Email"
                 value={selectedUser.email}
-                onChange={(e) =>
-                  setSelectedUser({ ...selectedUser, email: e.target.value })
-                }
+                onChange={(e) => handleEditChange("email", e.target.value)}
               />
               <Input
                 label="Level"
                 type="number"
                 value={selectedUser.level}
-                onChange={(e) =>
-                  setSelectedUser({ ...selectedUser, level: +e.target.value })
-                }
+                onChange={(e) => handleEditChange("level", +e.target.value)}
               />
             </div>
-            <DialogFooter>
-              <Button
-                onClick={() => setIsEditOpen(false)}
-                className="bg-gray-500"
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleUpdateUser} className="bg-green-500">
-                <CheckCircle size={18} className="mr-1" />
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => setIsEditOpen(false)}
+              className="bg-gray-500"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateUser} className="bg-green-500">
+              <CheckCircle size={18} className="mr-1" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ❗️ Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              <AlertTriangle className="inline-block mr-2 text-red-600" />
+              Confirm Delete
+            </DialogTitle>
+          </DialogHeader>
+          <p>
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{userToDelete?.name}</span>? This
+            action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="bg-gray-500"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteUser}
+              className="bg-red-500 text-white"
+            >
+              <Trash2 size={18} className="mr-1" />
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

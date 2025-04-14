@@ -157,17 +157,19 @@ export default function ReportPage() {
         },
       ];
 
-      const prompt = `You are an expert in waste management and recycling. Analyze this image and provide:
-        1. The type of waste (e.g., plastic, paper, glass, metal, organic)
-        2. An estimate of the quantity or amount (in kg or liters)
-        3. Your confidence level in this assessment (as a percentage)
+      const prompt = `You are a waste management and recycling expert. Review the provided image and give a detailed analysis. Focus on these specific tasks:
+        1. Identify the type of waste (e.g., plastic, paper, glass, metal, organic).
+        2. Estimate the quantity or volume of the waste (use kg or liters, as appropriate).
+        3. Share your confidence level in the assessment as a number between 0 and 1 (e.g., 0.85 for 85%).   
         
-        Respond in JSON format like this:
+        Respond in clean JSON format, structured as follows:
         {
           "wasteType": "type of waste",
           "quantity": "estimated quantity with unit",
           "confidence": confidence level as a number between 0 and 1
-        }`;
+        }
+        
+        When making estimates, base your answer on visible characteristics, like color, shape, size, or texture. Assume the image quality is clear but avoid guessing if the details are unclear. If you're unsure about something, reflect that in the confidence score.`;
 
       const result = await model.generateContent([prompt, ...imageParts]);
       const response = await result.response;

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Menu,
@@ -29,7 +28,7 @@ const PickupHeader: React.FC<PickupHeaderProps> = ({ onMenuClick }) => {
 
   // Handle logout
   const handleLogout = () => {
-    localStorage.removeItem("userEmail");
+    localStorage.removeItem("agentEmail");
     router.push("/pickup/login");
   };
 

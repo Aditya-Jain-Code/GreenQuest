@@ -2,6 +2,11 @@ import { db } from "../dbConfig";
 import { Reports, Users } from "../schema";
 import { and, desc, eq } from "drizzle-orm";
 import { getUserByEmail } from "./users";
+import { createReward } from "./rewards";
+import { updateUserLevel } from "./helperActions";
+import { awardUserBadges } from "./badges";
+import { createTransaction } from "./transactions";
+import { createNotification } from "./notifications";
 
 // ✅ Fetch all pickup requests
 export async function getAllPickupRequests() {
@@ -199,23 +204,77 @@ export const getPickupDetails = async (pickupId: number) => {
   return pickup[0];
 };
 
+export type Pickup = {
+  id: number;
+  location: string;
+  status: string;
+  wasteType: string;
+  amount: string;
+  updatedAt: Date;
+};
+
+export type PickupStatus = "all" | "assigned" | "in_progress" | "completed";
+
 // Update Pickup Status
 export const updatePickupStatus = async (
   pickupId: number,
   newStatus: "assigned" | "in_progress" | "completed"
 ) => {
-  const updatedPickup = await db
-    .update(Reports)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(Reports.id, pickupId))
-    .returning()
-    .execute();
+  try {
+    // ✅ Update pickup status and updatedAt timestamp
+    const [updatedPickup] = await db
+      .update(Reports)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(Reports.id, pickupId))
+      .returning()
+      .execute();
 
-  if (!updatedPickup[0]) {
-    throw new Error("Failed to update pickup status.");
+    if (!updatedPickup) {
+      throw new Error(`❌ Failed to update pickup status for ID ${pickupId}.`);
+    }
+
+    const { userId } = updatedPickup;
+
+    // ✅ Check if the status is 'completed' and trigger reward, transaction, and notification
+    if (newStatus === "completed") {
+      const pointsEarned = 50; // Points for completing a pickup task
+      const rewardName = "Pickup Task Completion";
+      const rewardDescription =
+        "Points awarded for successfully completing a pickup task.";
+
+      // 🎁 Create a reward for the user
+      await createReward(userId, pointsEarned, rewardName, rewardDescription);
+
+      // 🔼 Update user's level and check for new badges
+      await updateUserLevel(userId);
+      await awardUserBadges(userId);
+
+      // 💸 Create a transaction for the reward
+      await createTransaction(
+        userId,
+        "earned_collect",
+        pointsEarned,
+        `Reward for completing pickup #${pickupId}`
+      );
+
+      // 🔔 Send notification to the user
+      await createNotification(
+        userId,
+        `You have earned ${pointsEarned} points for completing a pickup task!`,
+        "reward"
+      );
+    }
+
+    return updatedPickup;
+  } catch (error) {
+    console.error(
+      "❌ Error updating pickup status:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    throw new Error(
+      error instanceof Error ? error.message : "Unknown error occurred"
+    );
   }
-
-  return updatedPickup[0];
 };
 
 export const getPickupHistory = async (

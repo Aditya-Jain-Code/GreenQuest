@@ -78,7 +78,11 @@ export async function createReport(
 
     // Award 10 points for reporting waste
     const pointsEarned = 10;
-    await createReward(userId, pointsEarned);
+    const rewardName = "Waste Report Submission";
+    const rewardDescription = "Points awarded for submitting a waste report.";
+
+    // ✅ Create reward for the user
+    await createReward(userId, pointsEarned, rewardName, rewardDescription);
 
     await updateUserLevel(userId);
     await awardUserBadges(userId);
@@ -183,11 +187,11 @@ const VALID_STATUSES = [
   "pending",
   "in_progress",
   "completed",
-  "cancelled",
   "assigned",
-  "unassigned",
+  "cancelled",
 ];
 
+// ✅ Updated function to handle reward, transaction, and notification on status update
 export async function updateReportStatus(reportId: number, newStatus: string) {
   try {
     // Validate status
@@ -195,7 +199,7 @@ export async function updateReportStatus(reportId: number, newStatus: string) {
       throw new Error(`Invalid status: ${newStatus}`);
     }
 
-    // Ensure report exists
+    // Ensure the report exists
     const existingReport = await db
       .select()
       .from(Reports)
@@ -207,6 +211,9 @@ export async function updateReportStatus(reportId: number, newStatus: string) {
       throw new Error(`Report with ID ${reportId} not found.`);
     }
 
+    const report = existingReport[0];
+    const { userId } = report;
+
     // Update the report status
     const [updatedReport] = await db
       .update(Reports)
@@ -214,6 +221,36 @@ export async function updateReportStatus(reportId: number, newStatus: string) {
       .where(eq(Reports.id, reportId))
       .returning()
       .execute();
+
+    // ✅ Check if status is 'completed' and trigger reward, transaction, and notification
+    if (newStatus === "completed") {
+      const rewardPoints = 50; // You can dynamically calculate points if needed
+      const rewardName = "Waste Report Completion";
+      const rewardDescription = "Points awarded for completing a waste report.";
+
+      // 🎁 Create reward
+      const reward = await createReward(
+        userId,
+        rewardPoints,
+        rewardName,
+        rewardDescription
+      );
+
+      // 💸 Create transaction for the reward
+      await createTransaction(
+        userId,
+        "earned_report",
+        rewardPoints,
+        `Reward for completing report #${reportId}`
+      );
+
+      // 🔔 Create notification for the user
+      await createNotification(
+        userId,
+        `You have been awarded ${rewardPoints} points for completing a waste report.`,
+        "reward"
+      );
+    }
 
     return { success: true, updatedReport };
   } catch (error) {

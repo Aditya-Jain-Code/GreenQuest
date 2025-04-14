@@ -27,6 +27,13 @@ export default function PickupAgentProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
+    const agentEmail = localStorage.getItem("agentEmail");
+    if (!agentEmail) {
+      toast.error("User not found. Please log in again.");
+      router.push("/pickup/login");
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
         const data = (await getAgentProfile()) as AgentProfile;

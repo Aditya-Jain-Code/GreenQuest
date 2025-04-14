@@ -13,6 +13,7 @@ import {
   User,
   ChevronDown,
   LogIn,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import {
   markNotificationAsRead,
 } from "@/utils/db/actions/notifications";
 import { getUserBalance } from "@/utils/db/actions/transactions";
+import { Input } from "@/components/ui/input";
 
 const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
@@ -70,10 +72,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]); // Use the custom Notification type
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [balance, setBalance] = useState(0);
 
   const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/${searchQuery}`);
+      setSearchQuery("");
+      setShowSearch(false);
+    }
+  };
 
   useEffect(() => {
     const initializeWeb3Auth = async () => {
@@ -270,12 +283,77 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </div>
           </Link>
         </div>
+
+        {/* Search functionality - desktop */}
+        {!isMobile && (
+          <form
+            onSubmit={handleSearch}
+            className="flex-1 max-w-md mx-4 hidden md:flex"
+          >
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search..."
+                className="pl-10 pr-4 py-2 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+
         <div className="flex items-center">
+          {/* Search toggle for mobile */}
           {isMobile && (
-            <Button variant="ghost" size="icon" className="mr-2">
-              <Search className="h-5 w-5" />
-            </Button>
+            <>
+              {showSearch ? (
+                <form
+                  onSubmit={handleSearch}
+                  className="absolute top-0 left-0 right-0 bg-white p-2 flex items-center z-50"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    onClick={() => setShowSearch(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                  <Input
+                    type="text"
+                    placeholder="Search..."
+                    className="flex-1 mx-2"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <Button variant="ghost" size="icon" type="submit">
+                    <Search className="h-5 w-5" />
+                  </Button>
+                </form>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-2"
+                  onClick={() => setShowSearch(true)}
+                >
+                  <Search className="h-5 w-5" />
+                </Button>
+              )}
+            </>
           )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="mr-2 relative">

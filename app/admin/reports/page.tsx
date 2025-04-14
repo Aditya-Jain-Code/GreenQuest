@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, CheckCircle } from "lucide-react";
+import { Eye, Trash2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { getUserByEmail } from "@/utils/db/actions/users";
@@ -111,15 +111,18 @@ export default function AdminReportsPage() {
     setIsDetailsOpen(true);
   };
 
-  // ✅ Update report status
-  const handleUpdateStatus = async (reportId: number, status: string) => {
+  // ✅ Update report status (Now includes "cancelled")
+  const handleUpdateStatus = async (
+    reportId: number,
+    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
+  ) => {
     try {
       await updateReportStatus(reportId, status);
-      toast.success("Report status updated successfully!");
+      toast.success(`Report marked as ${status} successfully!`);
       refreshReports();
     } catch (error) {
-      console.error("Error updating report status:", error);
-      toast.error("Failed to update status.");
+      console.error(`Error updating report to ${status}:`, error);
+      toast.error(`Failed to update status to ${status}.`);
     }
   };
 
@@ -188,6 +191,8 @@ export default function AdminReportsPage() {
                         ? "bg-green-500"
                         : report.status === "in_progress"
                         ? "bg-yellow-500"
+                        : report.status === "cancelled"
+                        ? "bg-gray-500"
                         : "bg-red-500"
                     }`}
                   >
@@ -209,6 +214,12 @@ export default function AdminReportsPage() {
                     className="bg-green-500 text-white px-3 py-1"
                   >
                     <CheckCircle size={18} />
+                  </Button>
+                  <Button
+                    onClick={() => handleUpdateStatus(report.id, "cancelled")}
+                    className="bg-gray-500 text-white px-3 py-1"
+                  >
+                    <XCircle size={18} />
                   </Button>
                   <Button
                     onClick={() => handleDeleteReport(report.id)}

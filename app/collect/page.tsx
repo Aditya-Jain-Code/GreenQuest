@@ -9,6 +9,8 @@ import {
   Calendar,
   Weight,
   Search,
+  XCircle,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +24,7 @@ type CollectionTask = {
   location: string;
   wasteType: string;
   amount: string;
-  status: "pending" | "assigned" | "completed" | "unassigned";
+  status: "pending" | "assigned" | "completed" | "in_progress";
   date: string;
   collectorId: number | null;
 };
@@ -168,21 +170,46 @@ export default function CollectPage() {
 }
 
 function StatusBadge({ status }: { status: CollectionTask["status"] }) {
-  const statusConfig = {
-    pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-    assigned: { color: "bg-blue-100 text-blue-800", icon: Trash2 }, // Updated
-    completed: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-    unassigned: { color: "bg-gray-100 text-gray-800", icon: Calendar }, // Updated
+  const statusConfig: Record<
+    CollectionTask["status"] | string,
+    { color: string; icon: any }
+  > = {
+    pending: {
+      color: "bg-yellow-100 text-yellow-800", // 🟡 Yellow for pending
+      icon: Clock, // ⏰ Clock icon
+    },
+    assigned: {
+      color: "bg-blue-100 text-blue-800", // 🔵 Blue for assigned
+      icon: Truck, // 🚚 Truck icon
+    },
+    completed: {
+      color: "bg-green-100 text-green-800", // ✅ Green for completed
+      icon: CheckCircle, // ✔️ CheckCircle icon
+    },
+    in_progress: {
+      color: "bg-orange-100 text-orange-800", // 🟠 Orange for in progress
+      icon: Calendar, // 📅 Calendar icon
+    },
+    cancelled: {
+      color: "bg-red-100 text-red-800", // 🔴 Red for cancelled
+      icon: XCircle, // ❌ XCircle icon
+    },
+    // ✅ Fallback for unknown or undefined statuses
+    unknown: {
+      color: "bg-gray-100 text-gray-800",
+      icon: Trash2, // 🗑️ Trash as fallback icon
+    },
   };
 
-  const { color, icon: Icon } = statusConfig[status];
+  // ✅ Safe fallback for undefined or invalid status
+  const { color, icon: Icon } = statusConfig[status] || statusConfig["unknown"];
 
   return (
     <span
       className={`px-2 py-1 rounded-full text-xs font-medium ${color} flex items-center`}
     >
-      <Icon className="mr-1 h-3 w-3" />
-      {status.replace("_", " ")}
+      <Icon className="mr-1 h-4 w-4" />
+      {status?.replace("_", " ") || "Unknown"}
     </span>
   );
 }

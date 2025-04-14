@@ -1,0 +1,101 @@
+%%{init: {'theme': 'neutral', 'fontFamily': 'Arial', 'gantt': {'barHeight': 20}, 'flowchart': {'useMaxWidth': false}}}%%
+flowchart TD
+    %% ========== COLUMN ALIGNMENT ==========
+    subgraph column1[" "]
+        direction TB
+        U[["User\n• Submits reports\n• Tracks rewards"]]:::external
+        AD[["Admin\n• Manages pickups\n• Overrides rewards"]]:::external
+        PA[["Pickup Agent\n• Updates status\n• Uploads proof"]]:::external
+    end
+
+    subgraph column2[" "]
+        direction TB
+        BAPI[["Bing Image API\n• Plagiarism check"]]:::external
+        OSM[["OpenStreetMaps API\n• Reverse geocoding"]]:::external
+        W3A[["Web3Auth\n• Role authentication"]]:::external
+    end
+
+    %% ========== PROCESS ALIGNMENT ==========
+    subgraph column3["Processes"]
+        direction TB
+        subgraph 1["1. Report Verification"]
+            1.1["1.1 Validate Inputs"]:::process
+            1.2["1.2 Image Verification"]:::process
+            1.3["1.3 Geolocation Lookup"]:::process
+            1.4["1.4 Store Report"]:::process
+        end
+
+        subgraph 2["2. Pickup Management"]
+            2.1["2.1 Assign Pickup"]:::process
+            2.2["2.2 Track Status"]:::process
+        end
+    end
+
+    subgraph column4[" "]
+        direction TB
+        subgraph 3["3. Rewards"]
+            3.1["3.1 Calculate Tokens"]:::process
+            3.2["3.2 Evaluate Badges"]:::process
+        end
+
+        subgraph 4["4. Admin"]
+            4.1["4.1 Report Moderation"]:::process
+            4.2["4.2 User Management"]:::process
+        end
+    end
+
+    %% ========== DATA STORES ==========
+    subgraph column5["Data Stores"]
+        direction TB
+        users[("users")]:::datastore
+        reports[("reports")]:::datastore
+        pickups[("pickups")]:::datastore
+        rewards[("rewards")]:::datastore
+    end
+
+    %% ========== OPTIMIZED DATA FLOWS ==========
+    %% Report Flow
+    U -->|Report + Image| 1.1
+    1.1 -->|Valid Input| 1.2
+    1.2 -->|Verify Image| BAPI
+    BAPI -->|Result| 1.2
+    1.2 -->|Valid Image| 1.3
+    1.3 -->|Geocode| OSM
+    OSM -->|Address| 1.3
+    1.3 -->|Valid| 1.4
+    1.4 -->|Save| reports
+
+    %% Pickup Flow
+    AD -->|Manual Assign| 2.1
+    reports -->|New| 2.1
+    2.1 -->|Assign| pickups
+    pickups -->|Alert| PA
+    PA -->|Status| 2.2
+    2.2 -->|Completed| rewards
+
+    %% Reward Flow
+    rewards -->|Rules| 3.1
+    3.1 -->|Calculate| 3.2
+    3.2 -->|Badges| users
+
+    %% Admin Flow
+    users -->|Manage| 4.2
+    reports -->|Flagged| 4.1
+
+    %% Auth Flow
+    W3A -->|Roles| 4.2
+    W3A -->|Auth| U
+
+    %% ========== ENHANCED STYLING ==========
+    classDef external fill:#f0f4ff,stroke:#4a6baf,stroke-width:2px
+    classDef process fill:#e6f7ff,stroke:#1890ff,stroke-width:2px,stroke-dasharray:0
+    classDef datastore fill:#f6ffed,stroke:#52c41a,stroke-width:2px
+    class column1,column2,column3,column4,column5 fill:none,stroke:none
+
+    %% ========== LEGEND ==========
+    subgraph legend[" "]
+        direction LR
+        ex[External]:::external
+        pr[Process]:::process
+        ds[(Data Store)]:::datastore
+    end

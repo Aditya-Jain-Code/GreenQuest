@@ -37,6 +37,13 @@ export default function PickupDetailsPage() {
   useEffect(() => {
     const fetchDetails = async () => {
       try {
+        const agentEmail = localStorage.getItem("agentEmail");
+        if (!agentEmail) {
+          toast.error("User not found. Please log in again.");
+          router.push("/pickup/login");
+          return;
+        }
+
         const data = await getPickupDetails(Number(id));
 
         // Type assertion to restrict the status to valid types

@@ -12,6 +12,8 @@ import {
   getWasteCollectionTasks,
 } from "@/utils/db/actions/reports";
 import { getAllRewards } from "@/utils/db/actions/rewards";
+import { awardUserBadges } from "@/utils/db/actions/badges";
+import { getUserByEmail, getUserIdByEmail } from "@/utils/db/actions/users";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],

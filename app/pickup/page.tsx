@@ -60,11 +60,11 @@ export default function PickupDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const agentEmail = localStorage.getItem("userEmail");
+        const agentEmail = localStorage.getItem("agentEmail");
 
         if (!agentEmail) {
           toast.error("User not found. Please log in again.");
-          router.push("/login");
+          router.push("/pickup/login");
           return;
         }
 
@@ -114,9 +114,9 @@ export default function PickupDashboard() {
 
   return (
     <div className="bg-gray-100 min-h-screen py-10 px-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-screen-xl mx-auto">
         {/* Header */}
-        <h1 className="text-3xl font-bold text-green-700 mb-8 text-center">
+        <h1 className="text-3xl font-bold text-green-700 mb-8 text-center bg-white py-4 shadow-md rounded-xl">
           🚛 Pickup Agent Dashboard
         </h1>
 
@@ -158,38 +158,41 @@ export default function PickupDashboard() {
             {recentPickups.length === 0 ? (
               <p className="text-gray-600">No recent activity.</p>
             ) : (
-              <ul className="space-y-4">
-                {recentPickups.map((pickup) => (
-                  <li
-                    key={pickup.id}
-                    className="flex justify-between items-center bg-gray-50 p-4 rounded-lg hover:shadow-md transition"
-                  >
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-700">
-                        {pickup.wasteType} at {pickup.location}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {new Date(pickup.updatedAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <div
-                      className={`text-sm px-3 py-1 rounded-full ${
-                        pickup.status === "completed"
-                          ? "bg-green-100 text-green-700"
-                          : pickup.status === "in_progress"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {pickup.status === "completed"
-                        ? "✅ Completed"
-                        : pickup.status === "in_progress"
-                        ? "⏳ In Progress"
-                        : "📦 Assigned"}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <div className="flex justify-between items-center bg-white shadow-lg border border-gray-200 p-4 rounded-lg hover:shadow-xl transition-transform transform hover:scale-105">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    📦 {recentPickups[0]?.wasteType} at{" "}
+                    {recentPickups[0]?.location}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    📅 {new Date(recentPickups[0]?.updatedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div
+                  className={`flex items-center text-sm px-4 py-1 rounded-full ${
+                    recentPickups[0]?.status === "completed"
+                      ? "bg-green-100 text-green-700"
+                      : recentPickups[0]?.status === "in_progress"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  <span className="mr-1 text-lg">
+                    {recentPickups[0]?.status === "completed"
+                      ? "✅"
+                      : recentPickups[0]?.status === "in_progress"
+                      ? "⏳"
+                      : "📦"}
+                  </span>
+                  <span className="font-medium">
+                    {recentPickups[0]?.status === "completed"
+                      ? "Completed"
+                      : recentPickups[0]?.status === "in_progress"
+                      ? "In Progress"
+                      : "Assigned"}
+                  </span>
+                </div>
+              </div>
             )}
           </div>
 
@@ -214,6 +217,33 @@ export default function PickupDashboard() {
                 </h3>
               </div>
             </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-4">
+              <div
+                className="bg-green-500 h-4 rounded-full transition-all duration-500"
+                style={{
+                  width: `${(
+                    (earnings.completedPickups /
+                      (earnings.completedPickups +
+                        stats.assigned +
+                        stats.inProgress)) *
+                    100
+                  ).toFixed(0)}%`,
+                }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Progress:{" "}
+              {(
+                (earnings.completedPickups /
+                  (earnings.completedPickups +
+                    stats.assigned +
+                    stats.inProgress)) *
+                100
+              ).toFixed(0)}
+              %
+            </p>
           </div>
         </div>
 
@@ -221,21 +251,21 @@ export default function PickupDashboard() {
         <div className="mt-10 flex justify-center gap-6">
           <Button
             onClick={handleViewPickups}
-            className="bg-green-600 text-white hover:bg-green-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105"
+            className="bg-green-600 text-white hover:bg-green-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105 hover:shadow-lg"
           >
             <List className="mr-2" size={20} />
             View Assigned Pickups
           </Button>
           <Button
             onClick={handleProfile}
-            className="bg-blue-600 text-white hover:bg-blue-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105"
+            className="bg-blue-600 text-white hover:bg-blue-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105 hover:shadow-lg"
           >
             <User className="mr-2" size={20} />
             View Profile
           </Button>
           <Button
             onClick={handleSettings}
-            className="bg-gray-600 text-white hover:bg-gray-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105"
+            className="bg-gray-600 text-white hover:bg-gray-700 flex items-center px-6 py-3 rounded-lg shadow-md transition-transform transform hover:scale-105 hover:shadow-lg"
           >
             <Settings className="mr-2" size={20} />
             Settings
@@ -257,13 +287,17 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, bgColor }) => {
   return (
     <div
-      className={`rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition duration-300 transform hover:scale-105 bg-white`}
+      className={`rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition duration-300 transform hover:scale-105 bg-gradient-to-br from-white to-gray-50`}
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-        <div className={`p-2 rounded-full ${bgColor}`}>{icon}</div>
+        <div
+          className={`p-3 rounded-full ${bgColor} bg-opacity-20 shadow-inner`}
+        >
+          {icon}
+        </div>
       </div>
-      <p className={`text-3xl font-bold text-gray-700`}>{value}</p>
+      <p className="text-3xl font-bold text-gray-700">{value}</p>
     </div>
   );
 };
