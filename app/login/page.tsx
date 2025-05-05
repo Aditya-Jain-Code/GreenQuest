@@ -1,23 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Web3Auth } from "@web3auth/modal";
-import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
-import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Poppins } from "next/font/google";
-import { ArrowRight } from "lucide-react";
+import { Web3Auth } from "@web3auth/modal";
+import { CHAIN_NAMESPACES, IProvider, WEB3AUTH_NETWORK } from "@web3auth/base";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { createUser } from "@/utils/db/actions/users";
-
-const poppins = Poppins({
-  weight: ["300", "400", "600"],
-  subsets: ["latin"],
-  display: "swap",
-});
+import { toast } from "react-hot-toast";
+import { Loader2 } from "lucide-react";
 
 const clientId = process.env.WEB3AUTH_CLIENT_ID;
 
+// ✅ Sepolia Testnet Config
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
   chainId: "0xaa36a7",
@@ -29,13 +23,17 @@ const chainConfig = {
   logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
 };
 
+const privateKeyProvider = new EthereumPrivateKeyProvider({
+  config: { chainConfig },
+});
+
 export default function LoginPage() {
-  const [loading, setLoading] = useState(true);
-  const [web3auth, setWeb3Auth] = useState<Web3Auth | null>(null);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [provider, setProvider] = useState<IProvider | null>(null);
+  const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  // ✅ Check if user is already logged in and redirect to "/"
+  // ✅ Redirect if already logged in
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail");
     if (storedEmail) {
@@ -43,98 +41,104 @@ export default function LoginPage() {
     }
   }, [router]);
 
+  // ✅ Initialize Web3Auth
   useEffect(() => {
-    const initWeb3Auth = async () => {
-      if (!clientId) {
-        console.error("Web3Auth clientId is missing. Set it in .env");
-        return;
-      }
-
+    async function initWeb3Auth() {
       try {
-        const privateKeyProvider = new EthereumPrivateKeyProvider({
-          config: { chainConfig },
-        });
-
         const web3authInstance = new Web3Auth({
-          clientId,
+          clientId: clientId!,
           web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
           privateKeyProvider,
         });
 
         await web3authInstance.initModal();
-
-        setWeb3Auth(web3authInstance);
-
-        if (web3authInstance.connected) {
-          const user = await web3authInstance.getUserInfo();
-          setUserInfo(user);
-        }
-      } catch (error) {
-        console.error("Web3Auth initialization error:", error);
-      } finally {
-        setLoading(false);
+        setWeb3auth(web3authInstance);
+        setProvider(web3authInstance.provider);
+      } catch (err) {
+        console.error("Web3Auth Init Error:", err);
+        toast.error("Failed to initialize Web3Auth.");
       }
-    };
+    }
 
     initWeb3Auth();
   }, []);
 
-  useEffect(() => {
-    const registerUser = async () => {
-      if (userInfo && userInfo.email) {
-        try {
-          await createUser(userInfo.email, userInfo.name || "Anonymous User");
-
-          // ✅ Redirect to "/" after successful login
-          router.push("/");
-        } catch (error) {
-          console.error("❌ Error creating user in DB:", error);
-        }
-      }
-    };
-
-    registerUser();
-  }, [userInfo, router]);
-
-  const login = async () => {
+  // ✅ Handle Login
+  const handleLogin = async () => {
     if (!web3auth) {
+      toast.error("Web3Auth is not ready yet. Please try again.");
       return;
     }
 
+    setLoading(true);
+
     try {
-      await web3auth.connect();
-
-      const user = await web3auth.getUserInfo();
-
-      if (user && user.email) {
-        setUserInfo(user);
-
-        // ✅ Store user email in localStorage and redirect to "/"
-        localStorage.setItem("userEmail", user.email);
-        router.push("/");
-      } else {
-        console.error("❌ User email is missing after login.");
+      const web3authProvider = await web3auth.connect();
+      if (!web3authProvider) {
+        toast.error("Failed to connect with Web3Auth.");
+        return;
       }
-    } catch (error) {
-      console.error("Login error:", error);
+
+      const userInfo = await web3auth.getUserInfo();
+
+      if (userInfo?.email) {
+        // ✅ Save user in DB
+        await createUser(userInfo.email, userInfo.name || "Anonymous User");
+
+        // ✅ Store email locally and redirect
+        localStorage.setItem("userEmail", userInfo.email);
+        toast.success("Login successful!");
+        router.push("/");
+        window.location.reload();
+      } else {
+        toast.error("Failed to retrieve user info.");
+      }
+    } catch (err) {
+      console.error("Login Error:", err);
+      toast.error("Login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
-      <div className="max-w-lg mx-auto bg-white p-10 rounded-3xl shadow-lg text-center">
-        <h1 className="text-4xl font-bold mb-6 text-gray-800">Welcome</h1>
-        <p className="text-gray-600 mb-8 text-lg">
-          Sign in to continue your journey in sustainable waste management.
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-96 transform hover:scale-105 transition-transform duration-300">
+        <h1 className="text-3xl font-bold text-center text-green-700 mb-4">
+          🌱 Welcome to Green-Quest
+        </h1>
+        <p className="text-gray-600 text-center mb-6">
+          Sign in to begin your eco journey.
         </p>
-        <Button
-          onClick={login}
-          className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-4 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105"
+
+        <button
+          onClick={handleLogin}
           disabled={loading}
+          className={`w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center ${
+            loading && "cursor-not-allowed opacity-70"
+          }`}
         >
-          {loading ? "Loading..." : "Sign In with our Platform"}
-          <ArrowRight className="ml-2 h-5 w-5" />
-        </Button>
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            "Sign In with Web3Auth"
+          )}
+        </button>
+
+        <div className="mt-6 text-center text-gray-500 text-sm">
+          By signing in, you agree to our{" "}
+          <a href="#" className="text-green-600 hover:underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="text-green-600 hover:underline">
+            Privacy Policy
+          </a>
+          .
+        </div>
       </div>
     </div>
   );

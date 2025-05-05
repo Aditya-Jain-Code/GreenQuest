@@ -167,9 +167,7 @@ export default function ReportPage() {
           "wasteType": "type of waste",
           "quantity": "estimated quantity with unit",
           "confidence": confidence level as a number between 0 and 1
-        }
-        
-        When making estimates, base your answer on visible characteristics, like color, shape, size, or texture. Assume the image quality is clear but avoid guessing if the details are unclear. If you're unsure about something, reflect that in the confidence score.`;
+        }`;
 
       const result = await model.generateContent([prompt, ...imageParts]);
       const response = await result.response;
@@ -242,6 +240,7 @@ export default function ReportPage() {
       toast.success(
         `Report submitted successfully! You've earned points for reporting waste.`
       );
+      window.location.reload();
     } catch (error) {
       console.error("Error submitting report:", error);
       toast.error("Failed to submit report. Please try again.");
@@ -259,7 +258,7 @@ export default function ReportPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const predefinedAddress = "6PW3+R98, Gurudwara Rd, Punjab 144411";
+        const predefinedAddress = "7P43+2RW, Punjab 144411, India";
         console.log("Latitude:", latitude, "Longitude:", longitude);
 
         try {

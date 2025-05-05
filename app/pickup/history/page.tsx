@@ -37,7 +37,7 @@ const statusOptions: {
   {
     label: "Assigned",
     value: "assigned",
-    icon: <Eye className="w-4 h-4 mr-1 text-red-600" />,
+    icon: <Eye className="w-4 h-4 mr-1 text-blue-600" />,
   },
   {
     label: "In Progress",
@@ -48,6 +48,11 @@ const statusOptions: {
     label: "Completed",
     value: "completed",
     icon: <CheckCircle className="w-4 h-4 mr-1 text-green-600" />,
+  },
+  {
+    label: "Cancelled",
+    value: "cancelled",
+    icon: <XCircle className="w-4 h-4 mr-1 text-red-600" />,
   },
 ];
 
@@ -219,7 +224,11 @@ const PickupHistoryPage: React.FC = () => {
                         ? "bg-green-100 text-green-700"
                         : pickup.status === "in_progress"
                         ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
+                        : pickup.status === "assigned"
+                        ? "bg-blue-100 text-blue-700"
+                        : pickup.status === "cancelled"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-gray-100 text-gray-600"
                     }`}
                   >
                     {pickup.status.replace("_", " ").toUpperCase()}

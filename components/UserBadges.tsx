@@ -9,14 +9,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { CheckCircleIcon, LockIcon } from "lucide-react";
 
 interface Badge {
   id: number;
   name: string;
   description: string;
   category: string;
-  awardedAt: Date | null; // Null if not earned
+  awardedAt: Date | null;
 }
 
 interface UserBadgesProps {
@@ -43,72 +43,85 @@ const UserBadges: React.FC<UserBadgesProps> = ({ userId }) => {
     fetchBadges();
   }, [userId]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="text-center p-8 text-gray-500 animate-pulse">
         🔄 Loading your badges...
       </div>
     );
-  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
-  if (badges.length === 0)
+  }
+
+  if (error) {
+    return <div className="text-center p-8 text-red-500">{error}</div>;
+  }
+
+  if (badges.length === 0) {
     return (
       <div className="text-center p-8">
         🏆 No badges earned yet. Keep going!
       </div>
     );
+  }
 
   return (
     <TooltipProvider>
       <div className="p-8">
-        <h2 className="text-4xl font-extrabold mb-12 text-center text-blue-800">
-          🏅 Your Achievements
+        <h2 className="text-4xl font-extrabold mb-12 text-center text-indigo-700">
+          🏆 Your Achievements
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
           {badges.map((badge) => (
             <Tooltip key={badge.id}>
               <TooltipTrigger asChild>
                 <Card
-                  className={`relative overflow-hidden rounded-2xl p-8 transition-transform transform hover:scale-110 shadow-xl ${
+                  className={`relative overflow-hidden rounded-3xl p-6 transition-transform hover:scale-105 duration-300 ${
                     badge.awardedAt
-                      ? "bg-gradient-to-br from-blue-200 to-blue-400"
-                      : "bg-gray-200 opacity-60"
+                      ? "bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 text-white shadow-2xl hover:brightness-110"
+                      : "bg-gray-200 text-gray-400 opacity-60 blur-[1px]"
                   }`}
                 >
-                  <CardContent className="flex flex-col items-center justify-between h-full">
-                    <div className="text-5xl mb-6">
-                      {badge.awardedAt ? "🌟" : "🔒"}
+                  {/* ✨ Shine effect layer */}
+                  {badge.awardedAt && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine z-10 pointer-events-none" />
+                  )}
+                  <CardContent className="relative flex flex-col items-center justify-between h-full z-20">
+                    <div className="text-5xl mb-4">
+                      {badge.awardedAt ? "🏅" : "🔒"}
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-gray-900">
-                        {badge.name}
-                      </p>
+                      <p className="text-lg font-bold">{badge.name}</p>
                     </div>
                     {badge.awardedAt ? (
                       <CheckCircleIcon
-                        className="absolute top-4 right-4 text-blue-700"
-                        size={28}
+                        className="absolute top-3 right-3 text-white drop-shadow-lg"
+                        size={24}
                       />
                     ) : (
-                      <XCircleIcon
-                        className="absolute top-4 right-4 text-gray-500"
-                        size={28}
+                      <LockIcon
+                        className="absolute top-3 right-3 text-gray-500"
+                        size={24}
                       />
                     )}
                   </CardContent>
                 </Card>
               </TooltipTrigger>
-              <TooltipContent className="max-w-sm p-6 bg-white shadow-xl rounded-2xl border border-gray-300">
-                <p className="text-base text-gray-800">{badge.description}</p>
-                {badge.awardedAt ? (
-                  <p className="mt-3 text-sm text-blue-700">
-                    🗓️ Earned on:{" "}
-                    {new Date(badge.awardedAt).toLocaleDateString()}
+              <TooltipContent className="max-w-xs p-5 bg-white border border-gray-300 rounded-2xl shadow-xl">
+                <div className="flex flex-col gap-2">
+                  <p className="font-bold text-lg text-gray-800">
+                    {badge.name}
                   </p>
-                ) : (
-                  <p className="mt-3 text-sm text-gray-600">
-                    🔒 Not yet earned
-                  </p>
-                )}
+                  <p className="text-sm text-gray-600">{badge.description}</p>
+                  {badge.awardedAt ? (
+                    <p className="mt-2 text-xs text-green-700">
+                      🗓️ Earned:{" "}
+                      {new Date(badge.awardedAt).toLocaleDateString()}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-gray-400">
+                      🔒 Not earned yet
+                    </p>
+                  )}
+                </div>
               </TooltipContent>
             </Tooltip>
           ))}

@@ -103,7 +103,7 @@ export default function PickupAgentProfilePage() {
             icon={<CheckCircle className="text-green-500" />}
           />
           <StatCard
-            label="Pending Pickups"
+            label="In Progress Pickups"
             value={agent.pendingPickups}
             icon={<Truck className="text-yellow-500" />}
           />

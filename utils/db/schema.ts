@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import {
   integer,
   varchar,
@@ -9,7 +8,6 @@ import {
   jsonb,
   boolean,
   unique,
-  uuid,
 } from "drizzle-orm/pg-core";
 
 // Users table
@@ -108,65 +106,3 @@ export const UserBadges = pgTable(
     };
   }
 );
-
-export const Posts = pgTable("posts", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => Users.id, {
-    onDelete: "cascade",
-  }),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  category: varchar("category", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const Comments = pgTable("comments", {
-  id: serial("id").primaryKey(),
-  postId: integer("post_id").references(() => Posts.id, {
-    onDelete: "cascade",
-  }),
-  userId: integer("user_id").references(() => Users.id, {
-    onDelete: "cascade",
-  }),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const Votes = pgTable(
-  "votes",
-  {
-    id: serial("id").primaryKey(),
-    userId: integer("user_id").references(() => Users.id, {
-      onDelete: "cascade",
-    }),
-    postId: integer("post_id")
-      .references(() => Posts.id, { onDelete: "cascade" })
-      .default(sql<number>`NULL`),
-    commentId: integer("comment_id")
-      .references(() => Comments.id, { onDelete: "cascade" })
-      .default(sql<number>`NULL`),
-    voteType: integer("vote_type").notNull(), // Check constraint added below
-  },
-  (table) => {
-    return {
-      uniqueVote: unique().on(table.userId, table.postId, table.commentId),
-      voteTypeCheck: sql`CHECK (${table.voteType} IN (-1, 1))`, // Correct check placement
-    };
-  }
-);
-
-export const BestAnswers = pgTable("best_answers", {
-  id: serial("id").primaryKey(),
-  postId: integer("post_id")
-    .unique()
-    .references(() => Posts.id, { onDelete: "cascade" }),
-  commentId: integer("comment_id").references(() => Comments.id, {
-    onDelete: "cascade",
-  }),
-  selectedBy: integer("selected_by").references(() => Users.id, {
-    onDelete: "cascade",
-  }),
-  selectedAt: timestamp("selected_at").defaultNow(),
-});

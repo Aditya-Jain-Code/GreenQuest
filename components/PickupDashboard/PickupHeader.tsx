@@ -1,15 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Menu,
-  Bell,
-  User,
-  LogOut,
-  Settings,
-  ChevronDown,
-  Truck,
-} from "lucide-react";
+import { Menu, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,15 +12,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Props for handling sidebar toggle
 interface PickupHeaderProps {
-  onMenuClick?: () => void;
+  onMenuClick: () => void;
 }
 
 const PickupHeader: React.FC<PickupHeaderProps> = ({ onMenuClick }) => {
   const router = useRouter();
+  const [isAgentLoggedIn, setIsAgentLoggedIn] = useState(false);
 
-  // Handle logout
+  useEffect(() => {
+    const agentEmail =
+      typeof window !== "undefined" && localStorage.getItem("agentEmail");
+    setIsAgentLoggedIn(!!agentEmail);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("agentEmail");
     router.push("/pickup/login");
@@ -36,56 +35,52 @@ const PickupHeader: React.FC<PickupHeaderProps> = ({ onMenuClick }) => {
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         {/* Menu Button */}
-        <div className="flex items-center space-x-4">
-          {onMenuClick && (
-            <Button
-              onClick={onMenuClick}
-              className="text-gray-600 bg-gray-100 p-2 rounded-lg hover:bg-gray-200"
-            >
-              <Menu size={24} />
-            </Button>
-          )}
-          <h1 className="text-2xl font-bold text-green-700 flex items-center space-x-2">
-            <Truck className="text-green-600" size={28} />
-            <span>Pickup Agent Panel</span>
-          </h1>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 md:mr-4 hover:bg-green-100 focus:ring-2 focus:ring-green-500 rounded-lg"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-6 w-6 text-green-700" />
+        </Button>
+
+        {/* Logo / Title */}
+        <Link
+          href="/pickup"
+          className="text-2xl font-bold text-green-700 hover:text-green-600 transition-all"
+        >
+          🚛 Pickup Agent Panel
+        </Link>
 
         {/* Profile Dropdown */}
-        <div className="flex items-center space-x-4">
-          {/* Profile Dropdown */}
+        {isAgentLoggedIn && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg hover:bg-gray-200">
-                <User size={20} className="text-gray-700" />
-                <ChevronDown size={18} className="text-gray-600" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48 bg-white shadow-lg rounded-lg">
-              <DropdownMenuItem
-                onClick={() => router.push("/pickup/profile")}
-                className="flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-gray-100 cursor-pointer"
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2 hover:bg-green-100 focus:ring-2 focus:ring-green-500 rounded-lg px-4 py-2"
               >
-                <User size={18} />
-                <span>Profile</span>
-              </DropdownMenuItem>
+                <span className="font-medium text-gray-700">👤 Agent</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white text-gray-700 shadow-xl rounded-lg w-48 mt-2 border border-gray-200">
               <DropdownMenuItem
                 onClick={() => router.push("/pickup/settings")}
-                className="flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                className="flex items-center space-x-2 px-4 py-2 hover:bg-green-100 hover:text-green-700 cursor-pointer rounded-md"
               >
-                <Settings size={18} />
+                <Settings size={16} className="text-green-600" />
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="flex items-center space-x-2 px-4 py-3 text-red-700 hover:bg-red-100 cursor-pointer"
+                className="flex items-center space-x-2 px-4 py-2 hover:bg-red-100 hover:text-red-700 cursor-pointer rounded-md"
               >
-                <LogOut size={18} />
+                <LogOut size={16} className="text-red-600" />
                 <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        )}
       </div>
     </header>
   );

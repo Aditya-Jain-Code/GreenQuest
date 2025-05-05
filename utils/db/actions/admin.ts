@@ -1,14 +1,6 @@
 // utils/db/dashboardActions.ts
 import { db } from "@/utils/db/dbConfig";
-import {
-  Reports,
-  Users,
-  Transactions,
-  BestAnswers,
-  Votes,
-  Comments,
-  Posts,
-} from "@/utils/db/schema";
+import { Reports, Users, Transactions } from "@/utils/db/schema";
 import { and, eq } from "drizzle-orm";
 
 // Get Dashboard Stats
@@ -68,29 +60,4 @@ export const getDashboardStats = async () => {
     console.error("❌ Error fetching dashboard stats:", error);
     throw new Error("Failed to fetch dashboard stats.");
   }
-};
-
-export const deletePostByAdmin = async (postId: number, userId: number) => {
-  // Check if the user performing the action is an admin
-  const isAdmin = await db
-    .select()
-    .from(Users)
-    .where(and(eq(Users.id, userId), eq(Users.role, "admin")))
-    .limit(1);
-
-  if (!isAdmin.length) {
-    throw new Error("Unauthorized: Only admins can delete posts.");
-  }
-
-  // Delete best answer if it exists
-  await db.delete(BestAnswers).where(eq(BestAnswers.postId, postId));
-
-  // Delete votes associated with the post
-  await db.delete(Votes).where(eq(Votes.postId, postId));
-
-  // Delete comments associated with the post
-  await db.delete(Comments).where(eq(Comments.postId, postId));
-
-  // Finally, delete the post itself
-  return await db.delete(Posts).where(eq(Posts.id, postId)).returning();
 };

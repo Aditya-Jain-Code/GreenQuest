@@ -204,6 +204,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       if (user && user.email) {
         setUserInfo(user);
         localStorage.setItem("userEmail", user.email);
+        window.location.reload();
       } else {
         console.error("❌ User email is missing after login.");
       }
@@ -222,7 +223,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       setLoggedIn(false);
       setUserInfo(null);
       localStorage.removeItem("userEmail");
-
+      window.location.reload();
       router.refresh();
     } catch (error) {
       console.error("Error during logout:", error);

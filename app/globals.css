@@ -84,3 +84,27 @@ body {
 .hover\:scale-105:hover {
   transform: scale(1.05);
 }
+
+@layer utilities {
+  .animate-enter {
+    @apply transform transition duration-300 ease-out opacity-0 scale-95;
+  }
+  .animate-enter-active {
+    @apply opacity-100 scale-100;
+  }
+  .animate-leave {
+    @apply transform transition duration-200 ease-in opacity-100 scale-100;
+  }
+  .animate-leave-active {
+    @apply opacity-0 scale-95;
+  }
+}
+
+@keyframes shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

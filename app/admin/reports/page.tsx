@@ -193,6 +193,8 @@ export default function AdminReportsPage() {
                         ? "bg-yellow-500"
                         : report.status === "cancelled"
                         ? "bg-gray-500"
+                        : report.status === "assigned"
+                        ? "bg-blue-500"
                         : "bg-red-500"
                     }`}
                   >

@@ -86,32 +86,35 @@ export const getPickupStats = async (email: string) => {
     throw new Error("Agent not found");
   }
 
+  const agentId = agent[0].id;
+
   const assigned = await db
-    .select()
+    .select({ id: Reports.id })
     .from(Reports)
     .where(
-      and(eq(Reports.collectorId, agent[0].id), eq(Reports.status, "assigned"))
+      and(eq(Reports.collectorId, agentId), eq(Reports.status, "assigned"))
     )
     .execute();
 
   const inProgress = await db
-    .select()
+    .select({ id: Reports.id })
     .from(Reports)
     .where(
-      and(
-        eq(Reports.collectorId, agent[0].id),
-        eq(Reports.status, "in_progress")
-      )
+      and(eq(Reports.collectorId, agentId), eq(Reports.status, "in_progress"))
     )
     .execute();
 
   const completed = await db
-    .select()
+    .select({ id: Reports.id })
     .from(Reports)
     .where(
-      and(eq(Reports.collectorId, agent[0].id), eq(Reports.status, "completed"))
+      and(eq(Reports.collectorId, agentId), eq(Reports.status, "completed"))
     )
     .execute();
+
+  console.log("Assigned:", assigned.length);
+  console.log("In Progress:", inProgress.length);
+  console.log("Completed:", completed.length);
 
   return {
     assigned: assigned.length,
@@ -213,12 +216,17 @@ export type Pickup = {
   updatedAt: Date;
 };
 
-export type PickupStatus = "all" | "assigned" | "in_progress" | "completed";
+export type PickupStatus =
+  | "all"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 // Update Pickup Status
 export const updatePickupStatus = async (
   pickupId: number,
-  newStatus: "assigned" | "in_progress" | "completed"
+  newStatus: "assigned" | "in_progress" | "completed" | "cancelled"
 ) => {
   try {
     // ✅ Update pickup status and updatedAt timestamp

@@ -12,8 +12,8 @@ import {
   getWasteCollectionTasks,
 } from "@/utils/db/actions/reports";
 import { getAllRewards } from "@/utils/db/actions/rewards";
-import { awardUserBadges } from "@/utils/db/actions/badges";
-import { getUserByEmail, getUserIdByEmail } from "@/utils/db/actions/users";
+import { motion } from "framer-motion";
+import { fadeInUp } from "@/lib/animation";
 
 const poppins = Poppins({
   weight: ["300", "400", "600"],
@@ -116,27 +116,59 @@ export default function Home() {
         />
       </section>
 
-      {/* Feature Section */}
-      <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-10 mb-20">
-        <FeatureCard
-          icon={Leaf}
-          title="Eco-Friendly"
-          description="Contribute to a cleaner environment."
-          className="hover:scale-105 transition-transform"
-        />
-        <FeatureCard
-          icon={Coins}
-          title="Earn Rewards"
-          description="Get tokens for your contributions."
-          className="hover:scale-105 transition-transform"
-        />
-        <FeatureCard
-          icon={Users}
-          title="Community-Driven"
-          description="Be part of a growing community."
-          className="hover:scale-105 transition-transform"
-        />
-      </section>
+      {/* Feature Section - Real Features */}
+      <motion.section
+        className="grid sm:grid-cols-2 md:grid-cols-3 gap-10 mb-20"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        {[
+          {
+            icon: Leaf,
+            title: "AI-Based Waste Classification",
+            description:
+              "Upload waste images and let AI categorize them automatically.",
+          },
+          {
+            icon: MapPin,
+            title: "Report with Location",
+            description:
+              "Submit pickup requests with GPS-tagged location data.",
+          },
+          {
+            icon: Recycle,
+            title: "Impact Tracking",
+            description:
+              "Visualize your waste collection and CO₂ offset stats.",
+          },
+          {
+            icon: Coins,
+            title: "Earn & Redeem Tokens",
+            description:
+              "Receive tokens for reports and redeem for real-world rewards.",
+          },
+          {
+            icon: Users,
+            title: "Achievements & Badges",
+            description: "Unlock eco-badges and celebrate your progress.",
+          },
+          {
+            icon: Leaf,
+            title: "Personal Progress Dashboard",
+            description: "Track your contributions with detailed visual stats.",
+          },
+        ].map((feature, i) => (
+          <motion.div key={i} variants={fadeInUp}>
+            <FeatureCard
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+              className="hover:scale-105 transition-transform"
+            />
+          </motion.div>
+        ))}
+      </motion.section>
 
       {/* Impact Section */}
       <section className="bg-gradient-to-b from-white to-green-50 p-10 rounded-3xl shadow-xl mb-20">
@@ -150,34 +182,84 @@ export default function Home() {
             </p>
           ) : (
             <>
-              <ImpactCard
-                title="Waste Collected (kg)"
-                value={impactData.wasteCollected}
-                icon={Recycle}
-                className="animate-fade-in"
-              />
-              <ImpactCard
-                title="Reports Submitted"
-                value={impactData.reportsSubmitted}
-                icon={MapPin}
-                className="animate-fade-in"
-              />
-              <ImpactCard
-                title="Tokens Earned"
-                value={impactData.tokensEarned}
-                icon={Coins}
-                className="animate-fade-in"
-              />
-              <ImpactCard
-                title="CO₂ Offset (kg)"
-                value={impactData.co2Offset}
-                icon={Leaf}
-                className="animate-fade-in"
-              />
+              <motion.div variants={fadeInUp}>
+                <ImpactCard
+                  title="Waste Collected (kg)"
+                  value={impactData.wasteCollected}
+                  icon={Recycle}
+                  className="animate-fade-in"
+                />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <ImpactCard
+                  title="Reports Submitted"
+                  value={impactData.reportsSubmitted}
+                  icon={MapPin}
+                  className="animate-fade-in"
+                />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <ImpactCard
+                  title="Tokens Earned"
+                  value={impactData.tokensEarned}
+                  icon={Coins}
+                  className="animate-fade-in"
+                />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <ImpactCard
+                  title="CO₂ Offset (kg)"
+                  value={impactData.co2Offset}
+                  icon={Leaf}
+                  className="animate-fade-in"
+                />
+              </motion.div>
             </>
           )}
         </div>
       </section>
+
+      {/* Why Green-Quest Section */}
+      <motion.section
+        className="bg-white border border-green-100 p-10 rounded-3xl shadow-lg mb-20"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        <h2 className="text-4xl font-bold mb-10 text-center text-gray-800">
+          Why Green-Quest?
+        </h2>
+        <div className="grid md:grid-cols-3 gap-8 text-center">
+          {[
+            {
+              icon: Leaf,
+              title: "Eco Impact",
+              description:
+                "Every action contributes to reducing waste and lowering CO₂ emissions.",
+            },
+            {
+              icon: Users,
+              title: "Community First",
+              description:
+                "Join a movement of people who care about the planet and act locally.",
+            },
+            {
+              icon: Coins,
+              title: "Rewards System",
+              description:
+                "Earn tokens for your efforts and redeem them for real-world rewards.",
+            },
+          ].map((card, i) => (
+            <motion.div key={i} variants={fadeInUp}>
+              <card.icon className="w-12 h-12 mx-auto mb-4 text-green-500" />
+              <h3 className="text-xl font-semibold mb-2 text-gray-700">
+                {card.title}
+              </h3>
+              <p className="text-gray-600">{card.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { getUserIdByEmail, getUserProfile } from "@/utils/db/actions/users";
-import { getUserBadges } from "@/utils/db/actions/badges";
+import { awardUserBadges, getUserBadges } from "@/utils/db/actions/badges";
 
 import {
   getUserProgress,

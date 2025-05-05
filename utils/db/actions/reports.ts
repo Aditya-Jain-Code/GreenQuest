@@ -32,6 +32,7 @@ export async function getWasteCollectionTasks(limit: number = 20) {
     const tasks = await db
       .select({
         id: Reports.id,
+        userId: Reports.userId,
         location: Reports.location,
         wasteType: Reports.wasteType,
         amount: Reports.amount,
@@ -283,8 +284,6 @@ export async function getReportById(reportId: number) {
     throw error;
   }
 }
-
-// Get Report Trends (Weekly/Monthly)
 
 // Get Report Trends (Weekly/Monthly)
 export const getReportTrends = async (

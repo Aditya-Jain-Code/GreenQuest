@@ -4,142 +4,96 @@ import { getUserProgress } from "./users";
 import { createNotification } from "./notifications";
 import { desc, eq } from "drizzle-orm";
 
-// Define the type for badge criteria
-type BadgeCriteria = {
-  type:
-    | "firstWasteCollected"
-    | "wasteCollected"
-    | "reportsSubmitted"
-    | "rewardsRedeemed"
-    | "co2Offset"
-    | "userLevel"
-    | "pickupTasksCompleted"; // Added pickup task completion support
-  amount: number;
-};
+type BadgeCriteriaType =
+  | "firstWasteCollected"
+  | "wasteCollected"
+  | "reportsSubmitted"
+  | "rewardsRedeemed"
+  | "co2Offset"
+  | "userLevel"
+  | "pickupTasksCompleted";
 
-// Helper function to validate badge criteria
-const isBadgeCriteria = (criteria: any): criteria is BadgeCriteria => {
-  return (
-    criteria &&
-    typeof criteria === "object" &&
-    [
-      "firstWasteCollected",
-      "wasteCollected",
-      "reportsSubmitted",
-      "rewardsRedeemed",
-      "co2Offset",
-      "userLevel",
-      "pickupTasksCompleted",
-    ].includes(criteria.type) &&
-    typeof criteria.amount === "number"
-  );
-};
-
-// Ensure 'userId' is a valid number
-export const awardUserBadges = async (userId: number): Promise<void> => {
+export const awardUserBadges = async (userId: number) => {
   try {
-    // Fetch the user's progress data
-    const userProgress = await getUserProgress(userId);
+    const badges = await db.select().from(Badges).execute();
+    if (!badges.length) return;
 
-    // Helper function to extract numeric value from strings like "100 kg"
-    const extractNumericValue = (value: string): number => {
-      const num = parseFloat(value);
-      return isNaN(num) ? 0 : num; // Handle invalid or non-numeric values
-    };
+    const awardedBadges = await db
+      .select({ badgeId: UserBadges.badgeId })
+      .from(UserBadges)
+      .where(eq(UserBadges.userId, userId))
+      .execute();
 
-    // Fetch all available badges and user's current badges
-    const [allBadges, userBadges] = await Promise.all([
-      db.select().from(Badges).execute(),
-      db
-        .select({ badgeId: UserBadges.badgeId })
-        .from(UserBadges)
-        .where(eq(UserBadges.userId, userId))
-        .execute(),
-    ]);
+    const awardedBadgeIds = new Set(awardedBadges.map((b) => b.badgeId));
 
-    // Get badge IDs that the user already has
-    const userBadgeIds = new Set(userBadges.map((badge) => badge.badgeId));
+    const progress = await getUserProgress(userId);
 
-    // Identify new badges that need to be awarded
-    const newBadges = allBadges.filter((badge) => {
-      if (userBadgeIds.has(badge.id)) {
-        console.log(
-          `✅ User ${userId} already has badge ${badge.id}. Skipping.`
-        );
-        return false;
+    const wasteCollectedKg = parseFloat(
+      progress.wasteCollected.replace(" kg", "")
+    );
+
+    const badgeAwardsToInsert: { userId: number; badgeId: number }[] = [];
+
+    for (const badge of badges) {
+      if (awardedBadgeIds.has(badge.id)) continue;
+
+      const criteria = badge.criteria as {
+        type: BadgeCriteriaType;
+        amount: number;
+      };
+      let isEligible = false;
+
+      switch (criteria.type) {
+        case "firstWasteCollected":
+          isEligible = wasteCollectedKg >= 1;
+          break;
+        case "wasteCollected":
+          isEligible = wasteCollectedKg >= criteria.amount;
+          break;
+        case "reportsSubmitted":
+          isEligible = progress.reportsSubmitted >= criteria.amount;
+          break;
+        case "rewardsRedeemed":
+          isEligible = progress.rewardsRedeemed >= criteria.amount;
+          break;
+        case "co2Offset":
+          isEligible = progress.co2Offset >= criteria.amount;
+          break;
+        case "userLevel":
+          isEligible = progress.userLevel >= criteria.amount;
+          break;
+        case "pickupTasksCompleted":
+          isEligible = progress.pickupTasksCompleted >= criteria.amount;
+          break;
       }
 
-      try {
-        // Parse badge criteria
-        const criteria = badge.criteria;
-
-        // Validate criteria
-        if (!isBadgeCriteria(criteria)) {
-          console.warn(
-            `⚠️ Invalid criteria for badge ${badge.id}:`,
-            JSON.stringify(criteria)
-          );
-          return false;
-        }
-
-        // Check if the user meets the badge criteria
-        switch (criteria.type) {
-          case "firstWasteCollected":
-            return extractNumericValue(userProgress.wasteCollected) > 0; // Award if collected any waste
-          case "wasteCollected":
-            const wasteAmount = extractNumericValue(
-              userProgress.wasteCollected
-            );
-            return wasteAmount >= criteria.amount;
-          case "reportsSubmitted":
-            return userProgress.reportsSubmitted >= criteria.amount;
-          case "rewardsRedeemed":
-            return userProgress.rewardsRedeemed >= criteria.amount;
-          case "co2Offset":
-            return userProgress.co2Offset >= criteria.amount;
-          case "pickupTasksCompleted":
-            return userProgress.pickupTasksCompleted >= criteria.amount;
-          case "userLevel":
-            return userProgress.userLevel >= criteria.amount;
-          default:
-            console.warn(`⚠️ Unknown badge criteria type: ${criteria.type}`);
-            return false;
-        }
-      } catch (error) {
-        console.error(
-          `❌ Error evaluating criteria for badge ${badge.id}:`,
-          error
-        );
-        return false;
-      }
-    });
-
-    // Award new badges if any criteria matched
-    if (newBadges.length > 0) {
-      await db.insert(UserBadges).values(
-        newBadges.map((badge) => ({
+      if (isEligible) {
+        badgeAwardsToInsert.push({
           userId,
           badgeId: badge.id,
-        }))
-      );
+        });
 
-      // Notify the user about the awarded badges
-      const badgeNames = newBadges.map((badge) => badge.name).join(", ");
-      const notificationMessage = `🎉 Congratulations! You've earned the following badges: ${badgeNames}`;
-      await createNotification(userId, notificationMessage, "badge_award");
+        // ✅ Create notification for the badge earned
+        await createNotification(
+          userId,
+          `🏅 Congratulations! You have earned the "${badge.name}" badge.`,
+          "badge"
+        );
+      }
+    }
 
+    if (badgeAwardsToInsert.length > 0) {
+      await db.insert(UserBadges).values(badgeAwardsToInsert).execute();
       console.log(
-        `🏆 Awarded ${newBadges.length} new badges to user ${userId}`
+        `🏅 Awarded ${badgeAwardsToInsert.length} badges to user ${userId}`
       );
     } else {
-      console.log(`🚫 No new badges to award for user ${userId}`);
+      console.log(`ℹ️ No new badges awarded for user ${userId}`);
     }
   } catch (error) {
-    console.error(`❌ Error awarding badges for user ${userId}:`, error);
-    throw error; // Re-throw for error handling
+    console.error("❌ Error awarding badges:", error);
   }
 };
-
 // Fetch all badges
 export async function getAllBadges() {
   return await db
@@ -200,3 +154,11 @@ export const getUserBadges = async (userId: number) => {
     .where(eq(UserBadges.userId, userId))
     .orderBy(UserBadges.awardedAt);
 };
+
+export interface Badge {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  awardedAt: Date;
+}

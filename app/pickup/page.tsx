@@ -213,7 +213,7 @@ export default function PickupDashboard() {
               <div>
                 <p className="text-lg text-gray-600">Total Pickups</p>
                 <h3 className="text-2xl font-bold text-blue-700">
-                  {earnings.completedPickups}
+                  {stats.assigned + stats.inProgress + stats.completed}
                 </h3>
               </div>
             </div>
